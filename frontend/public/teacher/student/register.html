@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register Student</title>
+    <link rel="stylesheet" href="register.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <a
+        class="back-button"
+        href="../dashboard.html"
+        aria-label="Back to Dashboard"
+        >←</a
+      >
+      <h2>Register Student</h2>
+
+      <section class="mandatory-section">
+        <h3>Mandatory Subjects</h3>
+        <ul class="mandatory-list">
+          <li>Mathematics</li>
+          <li>Science</li>
+          <li>English</li>
+          <li>Language</li>
+          <li>Social Studies</li>
+        </ul>
+      </section>
+
+      <form id="registerStudentForm">
+        <input
+          name="student_name"
+          placeholder="Student Name"
+          aria-label="Student Name"
+          required
+        />
+        <input
+          name="parent_name"
+          placeholder="Parent Name"
+          aria-label="Parent Name"
+          required
+        />
+        <input
+          name="phone"
+          placeholder="Phone Number"
+          aria-label="Phone Number"
+          required
+        />
+        <input name="email" placeholder="Email (optional)" aria-label="Email" />
+
+        <select name="elective_subject_1" aria-label="Elective Subject 1">
+          <option value="">Select Elective Subject 1</option>
+          <option value="Health and Physical Education">
+            Health and Physical Education
+          </option>
+          <option value="ICT">ICT</option>
+          <option value="Art">Art</option>
+        </select>
+
+        <select name="elective_subject_2" aria-label="Elective Subject 2">
+          <option value="">Select Elective Subject 2</option>
+          <option value="Geography">Geography</option>
+          <option value="Accounting">Accounting</option>
+          <option value="International Studies">International Studies</option>
+        </select>
+
+        <select name="elective_subject_3" aria-label="Elective Subject 3">
+          <option value="">Select Elective Subject 3</option>
+          <option value="Agricultural Science">Agricultural Science</option>
+          <option value="Culinary Arts">Culinary Arts</option>
+          <option value="Electronics">Electronics</option>
+        </select>
+
+        <button type="submit">Register</button>
+      </form>
+    </div>
+    <script src="../../assets/js/teacher-auth.js"></script>
+    <script src="register.js"></script>
+  </body>
+</html>

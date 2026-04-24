@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teacher Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <div class="header-text">
+          <p class="greeting" id="teacherGreeting">Good Morning, Teacher</p>
+          <h1 id="teacherClassTitle">Class details unavailable</h1>
+        </div>
+        <div class="header-meta">
+          <span class="status-badge">Teacher</span>
+          <span class="header-note">Quick access to your class tools</span>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="overview-card">
+          <h2>Dashboard</h2>
+          <p>
+            Use the buttons below to mark attendance, manage term tests, and
+            register students quickly.
+          </p>
+        </section>
+
+        <nav class="menu">
+          <a href="attendance/attendance.html">Mark Attendance</a>
+          <a href="term-test/term.html">Term Test</a>
+          <a href="student/register.html">Register Student</a>
+          <a href="student/details.html">View Student Details</a>
+        </nav>
+      </main>
+    </div>
+    <script src="../assets/js/teacher-auth.js"></script>
+    <script src="dashboard.js"></script>
+  </body>
+</html>

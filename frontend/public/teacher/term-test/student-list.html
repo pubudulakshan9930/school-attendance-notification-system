@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student List</title>
+    <link rel="stylesheet" href="../../assets/css/global.css" />
+    <link rel="stylesheet" href="../../assets/css/components.css" />
+    <link rel="stylesheet" href="term.css" />
+  </head>
+
+  <body>
+    <main class="term-page">
+      <header class="page-header">
+        <a
+          class="back-button"
+          href="term.html"
+          aria-label="Back to Term Selection"
+          >←</a
+        >
+        <div>
+          <h3>Student List</h3>
+          <p>Term: <strong id="currentTerm"></strong></p>
+        </div>
+      </header>
+
+      <section class="student-list card">
+        <h4>Students</h4>
+        <div class="student-placeholder" id="studentListPlaceholder">
+          No term selected. Return to term selection and choose a term.
+        </div>
+        <ul id="studentList"></ul>
+      </section>
+    </main>
+
+    <script src="../../assets/js/teacher-auth.js"></script>
+    <script src="student-list.js"></script>
+  </body>
+</html>

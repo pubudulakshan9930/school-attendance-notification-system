@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attendance</title>
+    <link rel="stylesheet" href="attendance.css" />
+  </head>
+
+  <body>
+    <header>
+      <a
+        class="back-button"
+        href="../dashboard.html"
+        aria-label="Back to Dashboard"
+        >←</a
+      >
+      <h2>Attendance - Today</h2>
+      <p class="date-text" id="todayDate"></p>
+    </header>
+
+    <section class="attendance-table" id="attendanceTableContainer">
+      <div class="table-row header-row">
+        <div>Name</div>
+        <div>Present</div>
+        <div>Absent</div>
+        <div>Late</div>
+      </div>
+      <div id="studentRowsContainer"></div>
+    </section>
+
+    <div class="actions">
+      <button id="saveAttendanceButton" type="button">Save Attendance</button>
+      <button id="notifyParentsButton" class="secondary" type="button">
+        Notify Parents
+      </button>
+    </div>
+
+    <script src="../../assets/js/teacher-auth.js"></script>
+    <script src="attendance.js"></script>
+  </body>
+</html>

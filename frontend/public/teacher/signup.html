@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teacher Signup - Sureki</title>
+    <link rel="stylesheet" href="../assets/css/global.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Teacher Sign Up</h1>
+      <form id="teacherSignupForm">
+        <input name="fullName" type="text" placeholder="Full Name" required />
+        <input name="teacherId" type="text" placeholder="Teacher ID" required />
+        <select name="grade" required>
+          <option value="">Select Grade</option>
+        </select>
+        <select name="classSection" required>
+          <option value="">Select Class</option>
+        </select>
+        <input name="phone" type="tel" placeholder="Phone Number" required />
+        <input name="email" type="email" placeholder="Email" required />
+        <div class="password-field">
+          <input
+            id="signupPassword"
+            name="password"
+            type="password"
+            placeholder="Password"
+            required
+          />
+          <button
+            id="toggleSignupPassword"
+            type="button"
+            class="password-toggle"
+            aria-label="Show or hide password"
+          >
+            👁
+          </button>
+        </div>
+        <div class="password-field">
+          <input
+            id="signupConfirmPassword"
+            name="confirmPassword"
+            type="password"
+            placeholder="Confirm Password"
+            required
+          />
+          <button
+            id="toggleSignupConfirmPassword"
+            type="button"
+            class="password-toggle"
+            aria-label="Show or hide confirm password"
+          >
+            👁
+          </button>
+        </div>
+        <button type="submit">Sign Up</button>
+      </form>
+      <p><a href="../index.html">Back to login</a></p>
+    </div>
+    <script src="../assets/js/signup.js"></script>
+  </body>
+</html>

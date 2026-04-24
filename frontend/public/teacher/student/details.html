@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assigned Class Details</title>
+    <link rel="stylesheet" href="details.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="page-header">
+        <a class="back-link" href="../dashboard.html">← Back to Dashboard</a>
+        <h1>Assigned Class Details</h1>
+        <p>
+          View class teacher information and the full student list for your
+          assigned class.
+        </p>
+      </header>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Class Overview</h2>
+          <button id="loadDetailsButton" type="button">Load Details</button>
+        </div>
+        <ul id="classMetaList" class="details-list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Students</h2>
+        <ul id="studentsList" class="details-list"></ul>
+      </section>
+    </main>
+
+    <script src="../../assets/js/teacher-auth.js"></script>
+    <script src="details.js"></script>
+  </body>
+</html>

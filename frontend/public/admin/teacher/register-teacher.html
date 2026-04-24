@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register Teacher</title>
+    <link rel="stylesheet" href="../../assets/css/global.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <h2>Register Teacher</h2>
+      <form id="adminTeacherForm">
+        <input name="fullName" type="text" placeholder="Full Name" required />
+        <input name="teacherId" type="text" placeholder="Teacher ID" required />
+        <select name="grade" required>
+          <option value="">Select Grade</option>
+        </select>
+        <select name="classSection" required>
+          <option value="">Select Class</option>
+        </select>
+        <input name="phone" type="tel" placeholder="Phone Number" required />
+        <input name="email" type="email" placeholder="Email" required />
+        <input
+          name="password"
+          type="password"
+          placeholder="Password"
+          required
+        />
+        <input
+          name="confirmPassword"
+          type="password"
+          placeholder="Confirm Password"
+          required
+        />
+        <button type="submit">Register</button>
+      </form>
+      <p><a href="../dashbaord-admin.html">Back to admin dashboard</a></p>
+    </div>
+    <script src="../../assets/js/admin-auth.js"></script>
+    <script src="../../assets/js/admin-register-teacher.js"></script>
+  </body>
+</html>

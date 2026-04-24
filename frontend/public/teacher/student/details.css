@@ -1,0 +1,143 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  background: #f3f4f6;
+  color: #111827;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(59, 130, 246, 0.15),
+      transparent 35%
+    ),
+    linear-gradient(180deg, #e2e8f0 0%, #f8fafc 100%);
+}
+
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.page-header {
+  background: #1e3a8a;
+  color: white;
+  padding: 22px;
+  border-radius: 22px;
+  box-shadow: 0 20px 44px rgba(30, 58, 138, 0.2);
+}
+
+.page-header h1 {
+  margin: 8px 0 6px;
+  font-size: clamp(1.5rem, 2vw, 2.2rem);
+}
+
+.page-header p {
+  margin: 0;
+  opacity: 0.92;
+}
+
+.back-link {
+  color: #dbeafe;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.card {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.card h2 {
+  margin: 0;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.card-header button {
+  border: none;
+  border-radius: 12px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.card-header button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.details-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.details-list li {
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #1f2937;
+  padding: 12px;
+}
+
+.detail-list-item {
+  display: grid;
+  gap: 6px;
+}
+
+.detail-line {
+  line-height: 1.5;
+}
+
+.detail-label {
+  color: #0f172a;
+}
+
+.detail-value {
+  color: #334155;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 16px;
+  }
+
+  .card,
+  .page-header {
+    padding: 16px;
+  }
+
+  .card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Marks</title>
+    <link rel="stylesheet" href="../../assets/css/global.css" />
+    <link rel="stylesheet" href="../../assets/css/components.css" />
+    <link rel="stylesheet" href="term.css" />
+  </head>
+
+  <body>
+    <main class="term-page">
+      <header class="page-header">
+        <a
+          class="back-button"
+          href="student-list.html"
+          aria-label="Back to Student List"
+          >←</a
+        >
+        <div>
+          <h3>Fill Student Marks</h3>
+          <p>
+            Term: <strong id="currentTerm"></strong> — Student:
+            <strong id="currentStudent"></strong>
+          </p>
+        </div>
+      </header>
+
+      <section class="marks-panel card">
+        <div class="marks-header">
+          <div>
+            <h4 id="studentName"></h4>
+            <p id="marksHint">Enter subject marks and click Done to save.</p>
+          </div>
+        </div>
+
+        <div class="subject-list" id="subjectList"></div>
+
+        <button type="button" class="btn btn-primary" id="saveButton">
+          Save
+        </button>
+      </section>
+    </main>
+
+    <script src="../../assets/js/teacher-auth.js"></script>
+    <script src="student-marks.js"></script>
+  </body>
+</html>
