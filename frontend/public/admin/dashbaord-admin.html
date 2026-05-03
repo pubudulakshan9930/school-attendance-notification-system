@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Patrick+Hand&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="../assets/css/global.css" />
     <link rel="stylesheet" href="../assets/css/components.css" />
     <link rel="stylesheet" href="./admin.css" />
@@ -11,273 +17,358 @@
 
   <body>
     <main class="admin-shell">
-      <section class="admin-hero container-wide">
-        <div>
-          <p class="eyebrow">Admin Panel</p>
-          <h1>School operations dashboard</h1>
-          <p class="hero-copy">
-            Manage classes, register teachers, monitor emergency communication,
-            and review reports from one place.
-          </p>
-        </div>
-
-        <div class="teacher-summary-card">
-          <div class="summary-heading">
-            <span>Registered teachers</span>
-            <strong id="teacherCount">0</strong>
-          </div>
-          <div id="teacherSummary" class="teacher-summary-list"></div>
-          <div class="absence-pill">
-            <span>Absent teachers</span>
-            <strong id="absentTeacherCount">0</strong>
-          </div>
-        </div>
-      </section>
-
       <section class="container-wide">
-        <nav class="admin-tabs" aria-label="Admin sections">
-          <button class="admin-tab is-active" type="button" data-tab="classes">
-            Create Class
-          </button>
-          <button class="admin-tab" type="button" data-tab="teachers">
-            Register Teacher
-          </button>
-          <button class="admin-tab" type="button" data-tab="class-details">
-            Class Details
-          </button>
-          <button class="admin-tab" type="button" data-tab="alerts">
-            Emergency Alerts
-          </button>
-          <button class="admin-tab" type="button" data-tab="reports">
-            Get Report
-          </button>
-        </nav>
-
-        <div class="admin-panels">
-          <section class="admin-panel is-active" data-panel="classes">
-            <div class="panel-card">
-              <div class="panel-copy">
-                <h2>Create Class</h2>
-                <p>Create new classes before assigning teachers.</p>
-              </div>
-              <form id="adminClassForm" class="stack-form">
-                <input
-                  name="grade"
-                  type="number"
-                  min="1"
-                  max="13"
-                  step="1"
-                  placeholder="Grade (1-13)"
-                  required
-                />
-                <input
-                  name="section"
-                  type="text"
-                  maxlength="1"
-                  placeholder="Class (e.g., A)"
-                  required
-                />
-                <input
-                  name="academicYear"
-                  type="number"
-                  min="2000"
-                  max="2100"
-                  required
-                />
-                <button type="submit">Create Class</button>
-              </form>
+        <div class="admin-workspace">
+          <aside class="admin-sidebar" aria-label="Admin menu">
+            <div class="sidebar-header">
+              <p id="sidebarGreeting" class="sidebar-greeting">Good day</p>
+              <h2 class="sidebar-title">Admin Panel</h2>
             </div>
+            <nav class="admin-tabs" aria-label="Admin sections">
+              <button
+                class="admin-tab is-active"
+                type="button"
+                data-tab="classes"
+              >
+                Create Class
+              </button>
+              <button class="admin-tab" type="button" data-tab="teachers">
+                Register Teacher
+              </button>
+              <button class="admin-tab" type="button" data-tab="class-details">
+                Class Details
+              </button>
+              <button class="admin-tab" type="button" data-tab="alerts">
+                Emergency Alerts
+              </button>
+              <button class="admin-tab" type="button" data-tab="reports">
+                Get Report
+              </button>
+            </nav>
+            <button id="logoutBtn" class="sidebar-logout-btn" type="button">
+              Logout
+            </button>
+          </aside>
 
-            <div class="panel-card">
-              <div class="panel-copy">
-                <h3>Created Classes</h3>
-                <p>Active class list for the current school year.</p>
+          <div class="admin-content">
+            <!-- <header class="dashboard-topbar">
+              <div>
+                <p class="dashboard-eyebrow">Fantastic School Admin</p>
+                <h1>Admin Dashboard</h1>
               </div>
-              <ul id="adminClassesList" class="result-list"></ul>
-            </div>
-          </section>
 
-          <section class="admin-panel" data-panel="teachers">
-            <div class="panel-card">
-              <div class="panel-copy">
-                <h2>Register Teacher</h2>
-                <p>Add a teacher and assign them to an available class.</p>
-              </div>
-              <form id="adminTeacherForm" class="stack-form">
-                <input
-                  name="fullName"
-                  type="text"
-                  placeholder="Full Name"
-                  required
-                />
-                <input
-                  name="teacherId"
-                  type="text"
-                  placeholder="Teacher ID"
-                  required
-                />
-                <select name="grade" required>
-                  <option value="">Select Grade</option>
-                </select>
-                <select name="classSection" required>
-                  <option value="">Select Class</option>
-                </select>
-                <input
-                  name="phone"
-                  type="tel"
-                  placeholder="Phone Number"
-                  required
-                />
-                <input name="email" type="email" placeholder="Email" required />
-                <input
-                  name="password"
-                  type="password"
-                  placeholder="Password"
-                  required
-                />
-                <input
-                  name="confirmPassword"
-                  type="password"
-                  placeholder="Confirm Password"
-                  required
-                />
-                <button type="submit">Register Teacher</button>
-              </form>
-            </div>
-          </section>
-
-          <section class="admin-panel" data-panel="class-details">
-            <div class="panel-card">
-              <div class="panel-copy">
-                <h2>Class Details</h2>
-                <p>
-                  Select year, grade, and class to load teacher and student
-                  details for only that class.
-                </p>
-              </div>
-              <form id="classDetailsFilterForm" class="stack-form">
-                <select id="classDetailsYear" required>
-                  <option value="">Select Year</option>
-                </select>
-                <select id="classDetailsGrade" required>
-                  <option value="">Select Grade</option>
-                </select>
-                <select id="classDetailsSection" required>
-                  <option value="">Select Class</option>
-                </select>
-                <button type="submit">Load Class Details</button>
-              </form>
-            </div>
-
-            <div class="report-grid">
-              <article class="panel-card report-card">
-                <h3>Class Teacher</h3>
-                <ul id="classTeacherDetails" class="result-list"></ul>
-              </article>
-
-              <article class="panel-card report-card">
-                <h3>Students</h3>
-                <ul id="classStudentsDetails" class="result-list"></ul>
-              </article>
-            </div>
-          </section>
-
-          <section class="admin-panel" data-panel="alerts">
-            <div class="panel-card">
-              <div class="panel-copy">
-                <h2>Emergency Alerts</h2>
-                <p>
-                  Send a school-wide SMS to every active student contact or all
-                  active teachers.
-                </p>
-              </div>
-              <form id="emergencyAlertForm" class="stack-form">
-                <select name="alertType" required>
-                  <option value="">Select alert target</option>
-                  <option value="student">Student alert</option>
-                  <option value="teacher">Teacher alert</option>
-                </select>
-                <input
-                  name="alertTitle"
-                  type="text"
-                  placeholder="Alert title"
-                  required
-                />
-                <textarea
-                  name="alertMessage"
-                  rows="6"
-                  placeholder="Write the emergency alert body"
-                  required
-                ></textarea>
-                <button type="submit">Send Alert</button>
-              </form>
-            </div>
-            <div class="panel-card">
-              <div class="panel-copy">
-                <h3>Delivery notes</h3>
-                <p>
-                  Student alerts are sent to parent phone numbers on each
-                  student record. Teacher alerts are sent to active teacher
-                  phone numbers.
-                </p>
-              </div>
-              <ul id="alertRecipientList" class="result-list"></ul>
-            </div>
-          </section>
-
-          <section class="admin-panel" data-panel="reports">
-            <div class="panel-card">
-              <div class="panel-copy">
-                <h2>Get Report</h2>
-                <p>
-                  Review attendance and term-test activity from the dashboard.
-                </p>
-              </div>
-              <div class="report-actions">
-                <button type="button" id="loadAttendanceReport">
-                  Load Attendance Report
-                </button>
-                <button type="button" id="loadTermReport">
-                  Load Term Test Report
-                </button>
-              </div>
-            </div>
-
-            <div class="report-grid">
-              <article class="panel-card report-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                  <h3>Attendance report</h3>
-                  <button type="button" id="downloadAttendanceReport" class="btn btn-secondary" style="display: none;">Download CSV</button>
+              <div class="dashboard-user" aria-label="Current user">
+                <div class="user-avatar">A</div>
+                <div class="user-meta">
+                  <strong>admin</strong>
+                  <span>School Admin</span>
                 </div>
-                <div id="attendanceReportSummary" class="report-summary"></div>
-                <ul id="attendanceReportList" class="result-list"></ul>
+              </div>
+            </header> -->
+
+            <section class="dashboard-stats-grid" aria-label="Key metrics">
+              <article class="teacher-summary-card dashboard-stat-card">
+                <div class="summary-heading">
+                  <span>Registered teachers</span>
+                  <strong id="teacherCount">0</strong>
+                </div>
+                <div id="teacherSummary" class="teacher-summary-list"></div>
+                <div class="absence-pill">
+                  <span>Absent teachers</span>
+                  <strong id="absentTeacherCount">0</strong>
+                </div>
               </article>
 
-              <article class="panel-card report-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                  <h3>Term-test report</h3>
-                  <button type="button" id="downloadTermReport" class="btn btn-secondary" style="display: none;">Download CSV</button>
-                </div>
-                <div id="termReportSummary" class="report-summary"></div>
-                <ul id="termReportList" class="result-list"></ul>
+              <article class="dashboard-stat-card">
+                <span class="stat-label">Created classes</span>
+                <strong id="classCount" class="stat-value">0</strong>
+                <p class="stat-note">Active classes this year</p>
               </article>
+
+              <article class="dashboard-stat-card">
+                <span class="stat-label">Admin tools</span>
+                <strong class="stat-value">5</strong>
+                <p class="stat-note">Create, manage and review sections</p>
+              </article>
+
+              <article class="dashboard-stat-card">
+                <span class="stat-label">Reports</span>
+                <strong class="stat-value">2</strong>
+                <p class="stat-note">Attendance and term-test reports</p>
+              </article>
+            </section>
+
+            <div class="admin-panels">
+              <section class="admin-panel is-active" data-panel="classes">
+                <div class="panel-grid panel-grid-two">
+                  <div class="panel-card">
+                    <div class="panel-copy">
+                      <h2>Create Class</h2>
+                      <p>Create new classes before assigning teachers.</p>
+                    </div>
+                    <form
+                      id="adminClassForm"
+                      class="stack-form compact-filter-form"
+                    >
+                      <input
+                        name="grade"
+                        type="number"
+                        min="1"
+                        max="13"
+                        step="1"
+                        placeholder="Grade (1-13)"
+                        required
+                      />
+                      <input
+                        name="section"
+                        type="text"
+                        maxlength="1"
+                        placeholder="Class (e.g., A)"
+                        required
+                      />
+                      <input
+                        name="academicYear"
+                        type="number"
+                        min="2000"
+                        max="2100"
+                        required
+                      />
+                      <button type="submit">Create Class</button>
+                    </form>
+                  </div>
+
+                  <div class="panel-card">
+                    <div class="panel-copy">
+                      <h3>Created Classes</h3>
+                      <p>Active class list for the current school year.</p>
+                    </div>
+                    <ul id="adminClassesList" class="result-list"></ul>
+                  </div>
+                </div>
+              </section>
+
+              <section class="admin-panel" data-panel="teachers">
+                <div class="panel-card">
+                  <div class="panel-copy">
+                    <h2>Register Teacher</h2>
+                    <p>Add a teacher and assign them to an available class.</p>
+                  </div>
+                  <form id="adminTeacherForm" class="stack-form form-grid">
+                    <input
+                      name="fullName"
+                      type="text"
+                      placeholder="Full Name"
+                      required
+                    />
+                    <input
+                      name="teacherId"
+                      type="text"
+                      placeholder="Teacher ID"
+                      required
+                    />
+                    <select name="grade" required>
+                      <option value="">Select Grade</option>
+                    </select>
+                    <select name="classSection" required>
+                      <option value="">Select Class</option>
+                    </select>
+                    <input
+                      name="phone"
+                      type="tel"
+                      placeholder="Phone Number"
+                      required
+                    />
+                    <input
+                      name="email"
+                      type="email"
+                      placeholder="Email"
+                      required
+                    />
+                    <input
+                      name="password"
+                      type="password"
+                      placeholder="Password"
+                      required
+                    />
+                    <input
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="Confirm Password"
+                      required
+                    />
+                    <button type="submit" class="form-full">
+                      Register Teacher
+                    </button>
+                  </form>
+                </div>
+              </section>
+
+              <section class="admin-panel" data-panel="class-details">
+                <div class="panel-card">
+                  <div class="panel-copy">
+                    <h2>Class Details</h2>
+                    <p>
+                      Select year, grade, and class to load teacher and student
+                      details for only that class.
+                    </p>
+                  </div>
+                  <form id="classDetailsFilterForm" class="stack-form">
+                    <select id="classDetailsYear" required>
+                      <option value="">Select Year</option>
+                    </select>
+                    <select id="classDetailsGrade" required>
+                      <option value="">Select Grade</option>
+                    </select>
+                    <select id="classDetailsSection" required>
+                      <option value="">Select Class</option>
+                    </select>
+                    <button type="submit">Load Class Details</button>
+                  </form>
+                </div>
+
+                <div class="report-grid">
+                  <article class="panel-card report-card">
+                    <h3>Class Teacher</h3>
+                    <ul id="classTeacherDetails" class="result-list"></ul>
+                  </article>
+
+                  <article class="panel-card report-card">
+                    <h3>Students</h3>
+                    <ul id="classStudentsDetails" class="result-list"></ul>
+                  </article>
+                </div>
+              </section>
+
+              <section class="admin-panel" data-panel="alerts">
+                <div class="panel-grid panel-grid-two">
+                  <div class="panel-card">
+                    <div class="panel-copy">
+                      <h2>Emergency Alerts</h2>
+                      <p>
+                        Send a school-wide SMS to every active student contact
+                        or all active teachers.
+                      </p>
+                    </div>
+                    <form id="emergencyAlertForm" class="stack-form">
+                      <select name="alertType" required>
+                        <option value="">Select alert target</option>
+                        <option value="student">Student alert</option>
+                        <option value="teacher">Teacher alert</option>
+                      </select>
+                      <input
+                        name="alertTitle"
+                        type="text"
+                        placeholder="Alert title"
+                        required
+                      />
+                      <textarea
+                        name="alertMessage"
+                        rows="6"
+                        placeholder="Write the emergency alert body"
+                        required
+                      ></textarea>
+                      <button type="submit">Send Alert</button>
+                    </form>
+                  </div>
+                  <div class="panel-card">
+                    <div class="panel-copy">
+                      <h3>Delivery notes</h3>
+                      <p>
+                        Student alerts are sent to parent phone numbers on each
+                        student record. Teacher alerts are sent to active
+                        teacher phone numbers.
+                      </p>
+                    </div>
+                    <ul id="alertRecipientList" class="result-list"></ul>
+                  </div>
+                </div>
+              </section>
+
+              <section class="admin-panel" data-panel="reports">
+                <div class="panel-card">
+                  <div class="panel-copy">
+                    <h2>Get Report</h2>
+                    <p>
+                      Review attendance and term-test activity from the
+                      dashboard.
+                    </p>
+                  </div>
+                  <div class="report-actions">
+                    <button type="button" id="loadAttendanceReport">
+                      Load Attendance Report
+                    </button>
+                    <button type="button" id="loadTermReport">
+                      Load Term Test Report
+                    </button>
+                  </div>
+                </div>
+
+                <div class="report-grid">
+                  <article class="panel-card report-card">
+                    <div class="report-card-header">
+                      <h3>Attendance report</h3>
+                      <button
+                        type="button"
+                        id="downloadAttendanceReport"
+                        class="btn btn-secondary"
+                        style="display: none"
+                      >
+                        Download CSV
+                      </button>
+                    </div>
+                    <div
+                      id="attendanceReportSummary"
+                      class="report-summary"
+                    ></div>
+                    <ul id="attendanceReportList" class="result-list"></ul>
+                  </article>
+
+                  <article class="panel-card report-card">
+                    <div class="report-card-header">
+                      <h3>Term-test report</h3>
+                      <button
+                        type="button"
+                        id="downloadTermReport"
+                        class="btn btn-secondary"
+                        style="display: none"
+                      >
+                        Download CSV
+                      </button>
+                    </div>
+                    <div id="termReportSummary" class="report-summary"></div>
+                    <ul id="termReportList" class="result-list"></ul>
+                  </article>
+                </div>
+              </section>
             </div>
-          </section>
+          </div>
         </div>
       </section>
     </main>
 
     <!-- Attendance Report Filter Modal -->
-    <div id="attendanceFilterModal" class="modal" style="display: none;">
+    <div id="attendanceFilterModal" class="modal" style="display: none">
       <div class="modal-content">
         <div class="modal-header">
           <h3>Filter Attendance Report</h3>
-          <button type="button" class="modal-close" data-modal="attendanceFilterModal">&times;</button>
+          <button
+            type="button"
+            class="modal-close"
+            data-modal="attendanceFilterModal"
+          >
+            &times;
+          </button>
         </div>
         <form id="attendanceFilterForm" class="modal-form">
           <div class="form-group">
             <label for="attendanceYear">Academic Year</label>
-            <input type="number" id="attendanceYear" min="2000" max="2100" required />
+            <input
+              type="number"
+              id="attendanceYear"
+              min="2000"
+              max="2100"
+              required
+            />
           </div>
           <div class="form-group">
             <label for="attendanceGrade">Grade</label>
@@ -297,18 +388,30 @@
           </div>
           <div class="modal-actions">
             <button type="submit" class="btn btn-primary">Load Report</button>
-            <button type="button" class="btn btn-secondary" data-modal="attendanceFilterModal">Cancel</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-modal="attendanceFilterModal"
+            >
+              Cancel
+            </button>
           </div>
         </form>
       </div>
     </div>
 
     <!-- Term Test Report Filter Modal -->
-    <div id="termFilterModal" class="modal" style="display: none;">
+    <div id="termFilterModal" class="modal" style="display: none">
       <div class="modal-content">
         <div class="modal-header">
           <h3>Filter Term Test Report</h3>
-          <button type="button" class="modal-close" data-modal="termFilterModal">&times;</button>
+          <button
+            type="button"
+            class="modal-close"
+            data-modal="termFilterModal"
+          >
+            &times;
+          </button>
         </div>
         <form id="termFilterForm" class="modal-form">
           <div class="form-group">
@@ -338,7 +441,13 @@
           </div>
           <div class="modal-actions">
             <button type="submit" class="btn btn-primary">Load Report</button>
-            <button type="button" class="btn btn-secondary" data-modal="termFilterModal">Cancel</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-modal="termFilterModal"
+            >
+              Cancel
+            </button>
           </div>
         </form>
       </div>
@@ -419,8 +528,8 @@
       .form-group input:focus,
       .form-group select:focus {
         outline: none;
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        border-color: #10223d;
+        box-shadow: 0 0 0 3px rgba(16, 34, 61, 0.1);
       }
 
       .modal-actions {
@@ -440,10 +549,6 @@
         background: #d1d5db;
       }
     </style>
-          </section>
-        </div>
-      </section>
-    </main>
 
     <script src="../assets/js/admin-auth.js"></script>
     <script src="./admin.js"></script>

@@ -366,7 +366,9 @@ async function saveAttendanceForTeacher(teacherId, records) {
       const studentId = String(record.student_id).trim();
       const status = String(record.status).trim().toLowerCase();
       if (!expectedStudentIds.has(studentId)) {
-        const error = new Error("One or more students do not belong to your class.");
+        const error = new Error(
+          "One or more students do not belong to your class.",
+        );
         error.statusCode = 400;
         throw error;
       }
@@ -449,8 +451,8 @@ async function getTodayAttendanceBundle(teacherId) {
 }
 
 async function insertNotificationLog(
-  db = pool,
   { studentId, notificationType, medium, recipient, message, status },
+  db = pool,
 ) {
   await db.query(
     `

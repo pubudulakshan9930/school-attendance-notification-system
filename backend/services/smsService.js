@@ -39,6 +39,25 @@ function formatEmergencyAlertSms({ alertTitle, alertBody }) {
   return [title, body].filter(Boolean).join("\n\n");
 }
 
+function formatRegistrationSms({
+  parentName,
+  studentName,
+  className,
+  studentCode,
+}) {
+  const p = String(parentName || "").trim();
+  const s = String(studentName || "").trim();
+  const c = String(className || "").trim();
+  const code = String(studentCode || "").trim();
+
+  const parts = [];
+  if (p) parts.push(`Hi ${p},`);
+  parts.push(`${s} has been registered to ${c}.`);
+  if (code) parts.push(`Student Code: ${code}`);
+
+  return parts.join(" ");
+}
+
 async function sendSms({ recipient, message }) {
   const { apiToken, senderId } = requireSmsConfig();
 
@@ -66,5 +85,6 @@ module.exports = {
   sanitizePhone,
   formatAttendanceSms,
   formatEmergencyAlertSms,
+  formatRegistrationSms,
   sendSms,
 };

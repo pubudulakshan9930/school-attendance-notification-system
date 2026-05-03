@@ -1,6 +1,7 @@
 const {
   sanitizePhone,
   formatAttendanceSms,
+  formatRegistrationSms,
   sendSms,
 } = require("../services/smsService");
 const teacherRepository = require("../repositories/teacherRepository");
@@ -186,6 +187,60 @@ async function registerStudent(req, res) {
         elective_subject_3,
       },
     );
+    // Attempt to notify parent via SMS (best-effort)
+    (async () => {
+      const className = `Grade ${result.class.grade} Class ${result.class.section}`;
+      const recipient = sanitizePhone(result.student.parent_phone);
+      const message = formatRegistrationSms({
+        parentName: result.student.parent_name,
+        studentName: result.student.full_name,
+        className,
+        studentCode: result.student.student_code,
+      });
+
+      if (!recipient) {
+        try {
+          await teacherRepository.insertNotificationLog({
+            studentId: result.student.id,
+            notificationType: "registration",
+            medium: "sms",
+            recipient: null,
+            message,
+            status: "failed: missing parent phone",
+          });
+        } catch (logErr) {
+          console.error("Notification log error (missing phone):", logErr);
+        }
+        return;
+      }
+
+      try {
+        await sendSms({ recipient, message });
+        await teacherRepository.insertNotificationLog({
+          studentId: result.student.id,
+          notificationType: "registration",
+          medium: "sms",
+          recipient,
+          message,
+          status: "sent",
+        });
+      } catch (smsErr) {
+        const failReason = smsErr?.message || "SMS provider error";
+        try {
+          await teacherRepository.insertNotificationLog({
+            studentId: result.student.id,
+            notificationType: "registration",
+            medium: "sms",
+            recipient,
+            message,
+            status: `failed: ${failReason}`,
+          });
+        } catch (logErr) {
+          console.error("Notification log error:", logErr);
+        }
+        console.error("Send registration SMS error:", smsErr);
+      }
+    })();
 
     return res.status(201).json({
       success: true,
@@ -238,7 +293,9 @@ async function saveAttendance(req, res) {
     });
   }
 
-  const expectedStudentIds = new Set(context.students.map((student) => student.id));
+  const expectedStudentIds = new Set(
+    context.students.map((student) => student.id),
+  );
   const seen = new Set();
   const normalizedRecords = [];
 
