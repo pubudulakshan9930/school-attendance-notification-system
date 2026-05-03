@@ -21,7 +21,7 @@ body {
   background:
     radial-gradient(
       circle at top left,
-      rgba(59, 130, 246, 0.15),
+      rgba(16, 34, 61, 0.15),
       transparent 35%
     ),
     linear-gradient(180deg, #e2e8f0 0%, #f8fafc 100%);
@@ -36,7 +36,7 @@ body {
 }
 
 .page-header {
-  background: #1e3a8a;
+  background: #10223d;
   color: white;
   padding: 22px;
   border-radius: 22px;
@@ -81,7 +81,7 @@ body {
 .card-header button {
   border: none;
   border-radius: 12px;
-  background: #1d4ed8;
+  background: #10223d;
   color: #ffffff;
   font-weight: 600;
   padding: 10px 14px;

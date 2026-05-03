@@ -13,9 +13,12 @@ const emergencyAlertForm = document.getElementById("emergencyAlertForm");
 const adminClassesList = document.getElementById("adminClassesList");
 const teacherSummary = document.getElementById("teacherSummary");
 const teacherCount = document.getElementById("teacherCount");
+const classCount = document.getElementById("classCount");
 const absentTeacherCount = document.getElementById("absentTeacherCount");
 const alertRecipientList = document.getElementById("alertRecipientList");
-const classDetailsFilterForm = document.getElementById("classDetailsFilterForm");
+const classDetailsFilterForm = document.getElementById(
+  "classDetailsFilterForm",
+);
 const classDetailsYear = document.getElementById("classDetailsYear");
 const classDetailsGrade = document.getElementById("classDetailsGrade");
 const classDetailsSection = document.getElementById("classDetailsSection");
@@ -35,6 +38,7 @@ const downloadAttendanceReportButton = document.getElementById(
   "downloadAttendanceReport",
 );
 const downloadTermReportButton = document.getElementById("downloadTermReport");
+const sidebarGreeting = document.getElementById("sidebarGreeting");
 const tabButtons = Array.from(document.querySelectorAll(".admin-tab"));
 const panels = Array.from(document.querySelectorAll(".admin-panel"));
 
@@ -72,7 +76,9 @@ async function apiFetch(url, options = {}) {
       // If token is missing/expired or belongs to a non-admin user, force re-login.
       localStorage.removeItem("sureki_token");
       window.location.href = "/index.html";
-      throw new Error("Admin access required. Please login with an admin account.");
+      throw new Error(
+        "Admin access required. Please login with an admin account.",
+      );
     }
 
     const message =
@@ -286,6 +292,16 @@ function setActiveTab(tabName) {
   });
 }
 
+function updateSidebarGreetingByTime() {
+  if (!sidebarGreeting) {
+    return;
+  }
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning, Admin" : "Good evening, Admin";
+  sidebarGreeting.textContent = greeting;
+}
+
 function renderTeacherSummary(teachers, absentCount) {
   if (teacherCount) {
     teacherCount.textContent = String(teachers.length);
@@ -459,7 +475,10 @@ async function initializeClassDetailsFilters() {
   });
 
   classDetailsGrade.addEventListener("change", () => {
-    setClassDetailsSectionOptions(classDetailsYear.value, classDetailsGrade.value);
+    setClassDetailsSectionOptions(
+      classDetailsYear.value,
+      classDetailsGrade.value,
+    );
   });
 }
 
@@ -574,6 +593,10 @@ async function loadClasses() {
 
   const data = await apiFetch(ADMIN_CLASSES_API);
   const classes = data.classes || [];
+
+  if (classCount) {
+    classCount.textContent = String(classes.length);
+  }
 
   renderList(
     adminClassesList,
@@ -1066,6 +1089,7 @@ tabButtons.forEach((button) => {
   });
 });
 
+updateSidebarGreetingByTime();
 setActiveTab("classes");
 
 (async function initDashboard() {
@@ -1080,3 +1104,13 @@ setActiveTab("classes");
     alert(error.message || "Failed to load dashboard data.");
   }
 })();
+
+// Logout functionality
+const logoutBtn = document.getElementById("logoutBtn");
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
+    window.location.href = "/";
+  });
+}

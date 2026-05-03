@@ -66,7 +66,9 @@ async function loadAvailableClasses() {
       throw new Error(data.error || "Unable to load class list.");
     }
 
-    availableClasses = data.classes || [];
+    availableClasses = (data.classes || []).filter(
+      (item) => item.teacher_id === null,
+    );
     const grades = [
       ...new Set(availableClasses.map((item) => item.grade)),
     ].sort((a, b) => a - b);

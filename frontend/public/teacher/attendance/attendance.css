@@ -7,7 +7,7 @@ body {
   min-height: 100vh;
   padding: 24px;
   font-family: Arial, sans-serif;
-  background: #eef2ff;
+  background: #eef2f7;
   color: #102a43;
 }
 
@@ -22,9 +22,9 @@ header {
   width: 42px;
   height: 42px;
   margin-bottom: 16px;
-  color: #1d4ed8;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  color: #10223d;
+  background: rgba(16, 34, 61, 0.08);
+  border: 1px solid rgba(16, 34, 61, 0.18);
   border-radius: 12px;
   text-decoration: none;
   font-size: 1.35rem;
@@ -35,8 +35,8 @@ header {
 }
 
 .back-button:hover {
-  color: #1e40af;
-  background: #dbeafe;
+  color: #10223d;
+  background: rgba(16, 34, 61, 0.14);
   transform: translateY(-1px);
 }
 
@@ -101,7 +101,7 @@ h2 {
 }
 
 .status-cell input {
-  accent-color: #2563eb;
+  accent-color: #10223d;
 }
 
 .status-cell:hover {
@@ -124,7 +124,7 @@ button {
   font-size: 1rem;
   font-weight: 700;
   color: #fff;
-  background: #2563eb;
+  background: #10223d;
   border: none;
   border-radius: 14px;
   cursor: pointer;
@@ -138,7 +138,7 @@ button.secondary {
 }
 
 button:hover {
-  background: #1f40af;
+  background: #0b1a2e;
 }
 
 button.secondary:hover {

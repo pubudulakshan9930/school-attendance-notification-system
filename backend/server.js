@@ -19,6 +19,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/teacher", teacherRoutes);
 
-app.listen(port,"0.0.0.0", () => {
+app.listen(port, () => {
   console.log(`Sureki backend listening at http://localhost:${port}`);
 });

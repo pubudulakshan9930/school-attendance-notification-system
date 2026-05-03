@@ -27,9 +27,9 @@ body {
   width: 42px;
   height: 42px;
   margin-bottom: 18px;
-  color: #1d4ed8;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  color: #10223d;
+  background: rgba(16, 34, 61, 0.08);
+  border: 1px solid rgba(16, 34, 61, 0.18);
   border-radius: 12px;
   text-decoration: none;
   font-size: 1.35rem;
@@ -40,8 +40,8 @@ body {
 }
 
 .back-button:hover {
-  color: #1e40af;
-  background: #dbeafe;
+  color: #10223d;
+  background: rgba(16, 34, 61, 0.14);
   transform: translateY(-1px);
 }
 
@@ -97,13 +97,13 @@ select {
 input:focus,
 select:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  border-color: #10223d;
+  box-shadow: 0 0 0 4px rgba(16, 34, 61, 0.12);
 }
 
 button {
   margin-top: 18px;
-  background: #2563eb;
+  background: #10223d;
   color: #ffffff;
   border: none;
   cursor: pointer;
@@ -111,7 +111,7 @@ button {
 }
 
 button:hover {
-  background: #1e40af;
+  background: #0b1a2e;
 }
 
 @media (max-width: 520px) {

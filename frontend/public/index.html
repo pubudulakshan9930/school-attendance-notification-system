@@ -4,19 +4,93 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sureki Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="assets/css/global.css" />
   </head>
-  <body>
-    <div class="container">
-      <h1>සුරැකි / Sureki</h1>
+  <body class="login-page">
+    <main class="login-shell">
+      <section class="login-hero" aria-label="Sureki introduction">
+        <div class="login-hero-brand">
+          <span class="login-hero-mark">S</span>
+          <span class="login-hero-copy">Sureki</span>
+        </div>
 
-      <form id="loginForm">
-        <input type="email" placeholder="Email" required />
-        <input type="password" placeholder="Password" required />
-        <button type="submit">Login</button>
-      </form>
-      <p><a href="teacher/signup.html">Teacher sign up</a></p>
-    </div>
+        <div class="login-hero-content">
+          <p class="login-hero-kicker">School management portal</p>
+          <h1>Sureki</h1>
+          <p class="login-hero-description">
+            Secure access for admins and teachers to manage classes, attendance,
+            student records, and term-test reports.
+          </p>
+          <ul class="login-hero-points" aria-label="Key app details">
+            <li>Admin and teacher login</li>
+            <li>Class, attendance, and report tools</li>
+            <li>Fast access on desktop and mobile</li>
+          </ul>
+        </div>
+
+        <div class="login-hero-decor" aria-hidden="true">
+          <span class="decor-shape decor-shape-one"></span>
+          <span class="decor-shape decor-shape-two"></span>
+          <span class="decor-shape decor-shape-three"></span>
+          <span class="decor-shape decor-shape-four"></span>
+          <span class="decor-wave"></span>
+        </div>
+      </section>
+
+      <section class="login-panel" aria-label="Login form">
+        <div class="login-panel-topbar">
+          <a class="language-chip" href="#" aria-label="Language selector">
+            <span aria-hidden="true">🌐</span>
+            English (English)
+          </a>
+        </div>
+
+        <div class="container">
+          <!-- <div class="login-nav">
+            <a class="go-back-link" href="teacher/signup.html">Go back</a>
+          </div> -->
+
+          <h1>Welcome!</h1>
+          <p class="login-subtitle">Please login to your account.</p>
+
+          <form id="loginForm">
+            <label class="field-label" for="loginEmail">Email</label>
+            <input id="loginEmail" type="email" placeholder="" required />
+
+            <label class="field-label" for="loginPassword">Password</label>
+            <input id="loginPassword" type="password" placeholder="" required />
+
+            <div class="login-actions-row">
+              <a href="admin/teacher/reset-password/reset-password.html">
+                Setup or Reset Password
+              </a>
+            </div>
+
+            <button type="submit">Login</button>
+          </form>
+
+          <div class="login-divider" aria-hidden="true">
+            <span>Or continue with</span>
+          </div>
+
+          <button type="button" class="google-button">
+            <span class="google-icon" aria-hidden="true">G</span>
+            Google
+          </button>
+
+          <div class="login-footer">
+            <span>Don’t have an account?</span>
+            <a href="teacher/signup.html">Sign up</a>
+          </div>
+        </div>
+      </section>
+    </main>
 
     <script src="assets/js/main.js"></script>
   </body>
