@@ -168,12 +168,94 @@ textarea {
 }
 
 .teacher-summary-card {
-  padding: 12px 14px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   width: 100%;
-  min-height: 126px;
+  min-height: auto;
+  background: linear-gradient(
+    135deg,
+    rgba(16, 34, 61, 0.03) 0%,
+    rgba(59, 130, 246, 0.05) 100%
+  );
+  border: 1px solid rgba(16, 34, 61, 0.12);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(16, 34, 61, 0.08);
+}
+
+.header-content {
+  flex: 1;
+}
+
+.card-title {
+  margin: 0 0 2px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #10223d;
+}
+
+.card-subtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.badge-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10223d, #1a3a52);
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.card-body {
+  padding: 12px 18px;
+  flex: 1;
+  min-height: 40px;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 18px;
+  background: rgba(16, 34, 61, 0.04);
+  border-top: 1px solid rgba(16, 34, 61, 0.08);
+}
+
+.footer-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.footer-stat .stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.footer-stat .stat-number {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #10223d;
 }
 
 .dashboard-stat-card {
@@ -202,55 +284,40 @@ textarea {
   font-size: 0.82rem;
 }
 
-.summary-heading,
-.absence-pill {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.summary-heading span,
-.absence-pill span,
-.panel-copy p {
-  color: #64748b;
-}
-
-.summary-heading strong,
-.absence-pill strong {
-  font-size: 1.1rem;
-}
-
 .teacher-summary-list {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  min-height: 28px;
+  min-height: 20px;
 }
 
 .teacher-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(16, 34, 61, 0.18);
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(16, 34, 61, 0.16);
   background: rgba(16, 34, 61, 0.08);
   color: #10223d;
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.teacher-chip:hover {
+  background: rgba(16, 34, 61, 0.12);
+  border-color: rgba(16, 34, 61, 0.24);
 }
 
 .teacher-chip.absent {
   background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.24);
   color: #991b1b;
 }
 
-.absence-pill {
-  padding-top: 8px;
-  border-top: 1px solid rgba(148, 163, 184, 0.18);
-  color: #10223d;
+.teacher-chip.absent:hover {
+  background: rgba(239, 68, 68, 0.14);
 }
 
 .admin-tabs {

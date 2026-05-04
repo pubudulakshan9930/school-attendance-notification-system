@@ -17,9 +17,31 @@ function requireSmsConfig() {
 }
 
 function sanitizePhone(phone) {
-  return String(phone || "")
+  let cleaned = String(phone || "")
     .replace(/\s+/g, "")
     .replace(/[()-]/g, "");
+
+  if (!cleaned) {
+    return null;
+  }
+
+  // Remove leading + if present
+  if (cleaned.startsWith("+")) {
+    cleaned = cleaned.substring(1);
+  }
+
+  // If it starts with 0 (local format like 0771234567), replace with 94
+  if (cleaned.startsWith("0")) {
+    cleaned = "94" + cleaned.substring(1);
+  }
+
+  // Ensure it starts with 94 (Sri Lanka country code)
+  if (!cleaned.startsWith("94")) {
+    // Assume it's a local number without 0 prefix
+    cleaned = "94" + cleaned;
+  }
+
+  return cleaned;
 }
 
 function formatAttendanceSms({
