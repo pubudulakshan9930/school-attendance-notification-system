@@ -29,7 +29,44 @@ function formatAttendanceSms({
   attendanceDate,
   status,
 }) {
-  return `Hi ${parentName}, ${studentName} (${className}) attendance on ${attendanceDate}: ${status}.`;
+  const p = String(parentName || "Parent").trim();
+  const s = String(studentName || "student").trim();
+  const c = String(className || "class").trim();
+  const normalizedStatus = String(status || "absent")
+    .trim()
+    .toLowerCase();
+
+  const baseDate = attendanceDate ? new Date(attendanceDate) : new Date();
+  const dateInSriLanka = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Colombo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(baseDate);
+
+  return `Dear ${p}, Your child ${s} ${normalizedStatus} at school on ${dateInSriLanka} at ${c}.`;
+}
+
+function formatTermMarksSms({ parentName, term, className, subjectMarks }) {
+  const p = String(parentName || "Parent").trim();
+  const t = String(term || "term").trim();
+  const c = String(className || "class").trim();
+
+  const lines = Array.isArray(subjectMarks)
+    ? subjectMarks
+        .map((entry) => {
+          const subject = String(
+            entry?.name || entry?.subject || "Subject",
+          ).trim();
+          const mark = String(entry?.mark ?? "").trim();
+          return `${subject} - ${mark}`;
+        })
+        .filter(Boolean)
+    : [];
+
+  const header = `Dear ${p}, Your child's ${t} ${c} marks has released,`;
+
+  return [header, ...lines].join("\n");
 }
 
 function formatEmergencyAlertSms({ alertTitle, alertBody }) {
@@ -84,6 +121,7 @@ async function sendSms({ recipient, message }) {
 module.exports = {
   sanitizePhone,
   formatAttendanceSms,
+  formatTermMarksSms,
   formatEmergencyAlertSms,
   formatRegistrationSms,
   sendSms,
