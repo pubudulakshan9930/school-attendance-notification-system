@@ -51,31 +51,25 @@
           </aside>
 
           <div class="admin-content">
-            <!-- <header class="dashboard-topbar">
-              <div>
-                <p class="dashboard-eyebrow">Fantastic School Admin</p>
-                <h1>Admin Dashboard</h1>
-              </div>
-
-              <div class="dashboard-user" aria-label="Current user">
-                <div class="user-avatar">A</div>
-                <div class="user-meta">
-                  <strong>admin</strong>
-                  <span>School Admin</span>
-                </div>
-              </div>
-            </header> -->
-
             <section class="dashboard-stats-grid" aria-label="Key metrics">
               <article class="teacher-summary-card dashboard-stat-card">
-                <div class="summary-heading">
-                  <span>Registered teachers</span>
-                  <strong id="teacherCount">0</strong>
+                <div class="card-header">
+                  <div class="header-content">
+                    <h3 class="card-title">Teachers</h3>
+                    <p class="card-subtitle">Active staff members</p>
+                  </div>
+                  <div class="badge-circle" id="teacherCount">0</div>
                 </div>
-                <div id="teacherSummary" class="teacher-summary-list"></div>
-                <div class="absence-pill">
-                  <span>Absent teachers</span>
-                  <strong id="absentTeacherCount">0</strong>
+                <div class="card-body">
+                  <div id="teacherSummary" class="teacher-summary-list"></div>
+                </div>
+                <div class="card-footer">
+                  <div class="footer-stat">
+                    <span class="stat-label">Absent</span>
+                    <strong class="stat-number" id="absentTeacherCount"
+                      >0</strong
+                    >
+                  </div>
                 </div>
               </article>
 
