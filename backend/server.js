@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 const teacherRoutes = require("./routes/teacher");
+const { isEmailConfigured } = require("./services/emailService");
 
 dotenv.config({ path: path.resolve(__dirname, ".env"), override: true });
 
@@ -21,4 +22,5 @@ app.use("/api/teacher", teacherRoutes);
 
 app.listen(port, () => {
   console.log(`Sureki backend listening at http://localhost:${port}`);
+  console.log(`[HEALTH] Email configured: ${isEmailConfigured()}`);
 });

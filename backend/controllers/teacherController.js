@@ -2,8 +2,13 @@ const {
   sanitizePhone,
   formatAttendanceSms,
   formatRegistrationSms,
+  formatTermMarksSms,
   sendSms,
 } = require("../services/smsService");
+const {
+  sendTermMarksEmail,
+  isEmailConfigured,
+} = require("../services/emailService");
 const teacherRepository = require("../repositories/teacherRepository");
 
 const TERM_ALIASES = {
@@ -563,6 +568,134 @@ async function saveTermMarks(req, res) {
         mark: Number(entry.mark),
       })),
     );
+
+    // Attempt to send email notification to parent (best-effort)
+    (async () => {
+      const className = `Grade ${result.class.grade} Class ${result.class.section}`;
+      const recipient = result.student.parent_email;
+      const message = `Term marks saved for ${result.student.full_name}`;
+      const smsRecipient = sanitizePhone(result.student.parent_phone);
+      const smsMessage = formatTermMarksSms({
+        parentName: result.student.parent_name,
+        term: `Term ${normalizedTerm}`,
+        className,
+        subjectMarks: result.subjectMarks,
+      });
+      const emailConfigured = isEmailConfigured();
+
+      if (!emailConfigured) {
+        try {
+          await teacherRepository.insertNotificationLog({
+            studentId: result.student.id,
+            notificationType: "term_test",
+            medium: "email",
+            recipient: recipient || "N/A",
+            message,
+            status: "failed: email service not configured",
+          });
+        } catch (logErr) {
+          console.error(
+            "Notification log error (email not configured):",
+            logErr,
+          );
+        }
+      } else if (!recipient || !recipient.includes("@")) {
+        try {
+          await teacherRepository.insertNotificationLog({
+            studentId: result.student.id,
+            notificationType: "term_test",
+            medium: "email",
+            recipient: recipient || "N/A",
+            message,
+            status: "failed: missing or invalid parent email",
+          });
+        } catch (logErr) {
+          console.error("Notification log error (missing email):", logErr);
+        }
+      } else {
+        try {
+          await sendTermMarksEmail({
+            recipient,
+            parentName: result.student.parent_name,
+            studentName: result.student.full_name,
+            studentCode: result.student.student_code,
+            className,
+            academicYear: result.class.academic_year,
+            term: normalizedTerm,
+            classTeacher: result.teacher.name,
+            subjects: result.subjectMarks,
+          });
+
+          await teacherRepository.insertNotificationLog({
+            studentId: result.student.id,
+            notificationType: "term_test",
+            medium: "email",
+            recipient,
+            message,
+            status: "sent",
+          });
+        } catch (emailErr) {
+          const failReason = emailErr?.message || "Email service error";
+          try {
+            await teacherRepository.insertNotificationLog({
+              studentId: result.student.id,
+              notificationType: "term_test",
+              medium: "email",
+              recipient,
+              message,
+              status: `failed: ${failReason}`,
+            });
+          } catch (logErr) {
+            console.error("Notification log error:", logErr);
+          }
+          console.error("Send term marks email error:", emailErr);
+        }
+      }
+
+      if (!smsRecipient) {
+        try {
+          await teacherRepository.insertNotificationLog({
+            studentId: result.student.id,
+            notificationType: "term_test",
+            medium: "sms",
+            recipient: "N/A",
+            message: smsMessage,
+            status: "failed: missing parent phone number",
+          });
+        } catch (logErr) {
+          console.error("Notification log error (missing sms phone):", logErr);
+        }
+        return;
+      }
+
+      try {
+        await sendSms({ recipient: smsRecipient, message: smsMessage });
+
+        await teacherRepository.insertNotificationLog({
+          studentId: result.student.id,
+          notificationType: "term_test",
+          medium: "sms",
+          recipient: smsRecipient,
+          message: smsMessage,
+          status: "sent",
+        });
+      } catch (smsErr) {
+        const failReason = smsErr?.message || "SMS service error";
+        try {
+          await teacherRepository.insertNotificationLog({
+            studentId: result.student.id,
+            notificationType: "term_test",
+            medium: "sms",
+            recipient: smsRecipient,
+            message: smsMessage,
+            status: `failed: ${failReason}`,
+          });
+        } catch (logErr) {
+          console.error("Notification log error:", logErr);
+        }
+        console.error("Send term marks sms error:", smsErr);
+      }
+    })();
 
     return res.json({
       success: true,

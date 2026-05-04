@@ -512,7 +512,7 @@ async function saveTermMarksForTeacher(teacherId, studentId, term, marks) {
 
     const studentCheckResult = await client.query(
       `
-        SELECT s.id, s.full_name
+        SELECT s.id, s.full_name, s.parent_email, s.parent_name, s.parent_phone, s.student_code
         FROM student_class_assignments sca
         JOIN students s ON s.id = sca.student_id
         WHERE sca.class_id = $1
@@ -548,6 +548,27 @@ async function saveTermMarksForTeacher(teacherId, studentId, term, marks) {
       throw error;
     }
 
+    const existingTermMarksResult = await client.query(
+      `
+        SELECT 1
+        FROM term_tests
+        WHERE student_id = $1
+          AND class_id = $2
+          AND term = $3
+          AND academic_year = $4
+        LIMIT 1
+      `,
+      [studentId, teacherClass.id, term, teacherClass.academic_year],
+    );
+
+    if (existingTermMarksResult.rows.length > 0) {
+      const error = new Error(
+        "Marks for this student and term have already been submitted.",
+      );
+      error.statusCode = 409;
+      throw error;
+    }
+
     const upsertQuery = `
       INSERT INTO term_tests (
         student_id,
@@ -568,6 +589,7 @@ async function saveTermMarksForTeacher(teacherId, studentId, term, marks) {
     `;
 
     const savedRows = [];
+    const subjectMarks = [];
     for (const entry of marks) {
       const subjectId = String(entry.subject_id).trim();
       const markValue = Number(entry.mark);
@@ -588,13 +610,35 @@ async function saveTermMarksForTeacher(teacherId, studentId, term, marks) {
         markValue,
       ]);
       savedRows.push(result.rows[0]);
+
+      // Find subject name for email
+      const subjectName = subjectResult.rows.find(
+        (row) => row.subject_id === subjectId,
+      )?.name;
+      subjectMarks.push({
+        subject_id: subjectId,
+        name: subjectName,
+        mark: markValue,
+      });
     }
+
+    // Fetch teacher name
+    const teacherResult = await client.query(
+      `SELECT full_name FROM users WHERE id = $1`,
+      [teacherId],
+    );
+    const teacherName =
+      teacherResult.rows.length > 0
+        ? teacherResult.rows[0].full_name
+        : "Class Teacher";
 
     await client.query("COMMIT");
 
     return {
       class: teacherClass,
       student: studentCheckResult.rows[0],
+      teacher: { name: teacherName },
+      subjectMarks,
       savedRows,
     };
   } catch (error) {
