@@ -69,15 +69,15 @@ function renderStudentRows() {
       <div class="name-cell">${student.full_name}</div>
       <label class="status-cell">
         <input type="radio" name="${radioName}" value="present" />
-        <span>Present</span>
+        
       </label>
       <label class="status-cell">
         <input type="radio" name="${radioName}" value="absent" />
-        <span>Absent</span>
+        
       </label>
       <label class="status-cell">
         <input type="radio" name="${radioName}" value="late" />
-        <span>Late</span>
+        
       </label>
     `;
 

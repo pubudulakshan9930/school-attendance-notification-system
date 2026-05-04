@@ -649,6 +649,63 @@ async function saveTermMarksForTeacher(teacherId, studentId, term, marks) {
   }
 }
 
+async function getStudentMarksForTeacher(teacherId, studentId, term) {
+  const pool = require("../db");
+  const client = await pool.connect();
+
+  try {
+    const teacherClass = await getTeacherCurrentClass(client, teacherId);
+    if (!teacherClass) {
+      const error = new Error("You are not assigned to an active class.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const studentResult = await client.query(
+      `
+        SELECT s.id, s.full_name, s.parent_name, s.student_code
+        FROM student_class_assignments sca
+        JOIN students s ON s.id = sca.student_id
+        WHERE sca.class_id = $1
+          AND sca.student_id = $2
+          AND sca.removed_at IS NULL
+          AND s.is_active = true
+        LIMIT 1
+      `,
+      [teacherClass.id, studentId],
+    );
+
+    if (studentResult.rows.length === 0) {
+      const error = new Error("Student not found in your class.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const marksResult = await client.query(
+      `
+        SELECT tt.id, tt.term, tt.subject_id, sub.name as subject_name, 
+               tt.mark, tt.exam_date, tt.created_at, tt.updated_at
+        FROM term_tests tt
+        JOIN subjects sub ON sub.id = tt.subject_id
+        WHERE tt.student_id = $1
+          AND tt.class_id = $2
+          AND tt.term = $3
+          AND tt.academic_year = $4
+        ORDER BY sub.name ASC
+      `,
+      [studentId, teacherClass.id, term, teacherClass.academic_year],
+    );
+
+    return {
+      class: teacherClass,
+      student: studentResult.rows[0],
+      marks: marksResult.rows,
+    };
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   getTeacherCurrentClass,
   getTeacherProfile,
@@ -662,4 +719,5 @@ module.exports = {
   insertNotificationLog,
   getStudentSubjectsForTeacher,
   saveTermMarksForTeacher,
+  getStudentMarksForTeacher,
 };

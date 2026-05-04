@@ -726,6 +726,50 @@ async function saveTermMarks(req, res) {
   }
 }
 
+async function getStudentMarks(req, res) {
+  try {
+    const { student_id, term } = req.query;
+    const normalizedTerm = normalizeTerm(term);
+
+    if (!normalizedTerm || !student_id) {
+      return res.status(400).json({
+        success: false,
+        error: "student_id and term are required query parameters.",
+      });
+    }
+
+    const result = await teacherRepository.getStudentMarksForTeacher(
+      req.user.userId,
+      student_id,
+      normalizedTerm,
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        student: result.student,
+        class: result.class,
+        term: normalizedTerm,
+        marks: result.marks,
+      },
+    });
+  } catch (error) {
+    console.error("Get student marks error:", error);
+
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch student marks.",
+    });
+  }
+}
+
 module.exports = {
   getDashboard,
   getStudents,
@@ -735,4 +779,5 @@ module.exports = {
   saveAttendance,
   notifyAttendance,
   saveTermMarks,
+  getStudentMarks,
 };

@@ -22,5 +22,22 @@ app.use("/api/teacher", teacherRoutes);
 
 app.listen(port, () => {
   console.log(`Sureki backend listening at http://localhost:${port}`);
-  console.log(`[HEALTH] Email configured: ${isEmailConfigured()}`);
+  const emailConfigured = isEmailConfigured();
+  console.log(`[HEALTH] Email configured: ${emailConfigured}`);
+
+  if (!emailConfigured) {
+    console.log(
+      `[DEBUG] EMAIL_USER present: ${Boolean(process.env.EMAIL_USER)}`,
+    );
+    console.log(
+      `[DEBUG] EMAIL_PASSWORD present: ${Boolean(process.env.EMAIL_PASSWORD)}`,
+    );
+    console.log(
+      `[DEBUG] EMAIL_HOST: ${process.env.EMAIL_HOST || "smtp.gmail.com"}`,
+    );
+  } else {
+    console.log(
+      `[DEBUG] Email host: ${process.env.EMAIL_HOST || "smtp.gmail.com"}, port: ${process.env.EMAIL_PORT || 587}`,
+    );
+  }
 });
