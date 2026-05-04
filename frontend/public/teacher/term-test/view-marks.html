@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>View Student Marks</title>
+    <link rel="stylesheet" href="../../assets/css/global.css" />
+    <link rel="stylesheet" href="../../assets/css/components.css" />
+    <link rel="stylesheet" href="term.css" />
+  </head>
+
+  <body>
+    <main class="term-page">
+      <header class="page-header">
+        <a
+          class="back-button"
+          href="../dashboard.html"
+          aria-label="Back to Dashboard"
+          >←</a
+        >
+        <div>
+          <h3>View Student Marks</h3>
+          <p>Select a term and student to view their exam marks.</p>
+        </div>
+      </header>
+
+      <section class="filter-section card">
+        <div class="filter-group">
+          <label for="termSelect">Select Term</label>
+          <select id="termSelect">
+            <option value="">Select Term</option>
+            <option value="1">First Term</option>
+            <option value="2">Second Term</option>
+            <option value="3">Third Term</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="studentSelect">Select Student</label>
+          <select id="studentSelect" disabled>
+            <option value="">Select Student</option>
+          </select>
+        </div>
+
+        <button id="viewMarksBtn" class="btn-primary" disabled>
+          View Marks
+        </button>
+      </section>
+
+      <section id="marksContainer" class="marks-section" style="display: none">
+        <div class="marks-header">
+          <div>
+            <h4 id="studentNameDisplay"></h4>
+            <p id="classDisplay"></p>
+          </div>
+          <div class="marks-term">
+            <span id="termDisplay"></span>
+          </div>
+        </div>
+
+        <div class="marks-table-wrapper">
+          <table class="marks-table">
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Marks</th>
+              </tr>
+            </thead>
+            <tbody id="marksTableBody">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="marks-summary">
+          <div class="summary-stat">
+            <span>Total Marks</span>
+            <strong id="totalMarks">0/100</strong>
+          </div>
+          <div class="summary-stat">
+            <span>Average</span>
+            <strong id="averageMarks">0%</strong>
+          </div>
+          <div class="summary-stat">
+            <span>Subjects</span>
+            <strong id="subjectCount">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <div id="noMarksMessage" class="empty-message" style="display: none">
+        <p>No marks found for selected student and term.</p>
+      </div>
+
+      <div id="loadingMessage" class="loading-message" style="display: none">
+        <p>Loading marks...</p>
+      </div>
+    </main>
+
+    <style>
+      .filter-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 16px;
+        align-items: flex-end;
+        margin-bottom: 24px;
+      }
+
+      .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .filter-group label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #10223d;
+      }
+
+      .filter-group select {
+        padding: 12px;
+        border: 1px solid #dbe4f0;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        background: #f8fbff;
+        color: #0f172a;
+      }
+
+      .filter-group select:focus {
+        outline: none;
+        border-color: #10223d;
+        box-shadow: 0 0 0 3px rgba(16, 34, 61, 0.12);
+      }
+
+      .filter-group select:disabled {
+        background: #f0f0f0;
+        color: #999;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #10223d, #0b1a2e);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(16, 34, 61, 0.2);
+      }
+
+      .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .marks-section {
+        display: grid;
+        gap: 20px;
+      }
+
+      .marks-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        background: linear-gradient(
+          135deg,
+          rgba(16, 34, 61, 0.05) 0%,
+          rgba(59, 130, 246, 0.05) 100%
+        );
+        border-radius: 8px;
+        border: 1px solid rgba(16, 34, 61, 0.12);
+      }
+
+      .marks-header h4 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #10223d;
+      }
+
+      .marks-header p {
+        margin: 4px 0 0;
+        font-size: 0.9rem;
+        color: #64748b;
+      }
+
+      .marks-term {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #10223d;
+        padding: 8px 16px;
+        background: rgba(59, 130, 246, 0.1);
+        border-radius: 6px;
+      }
+
+      .marks-table-wrapper {
+        overflow: hidden;
+      }
+
+      .marks-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+
+      .marks-table thead {
+        background: #10223d;
+        color: white;
+      }
+
+      .marks-table th {
+        padding: 14px 16px;
+        text-align: left;
+        font-weight: 700;
+      }
+
+      .marks-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        color: #1f2937;
+        word-break: break-word;
+      }
+
+      .marks-table tbody tr:hover {
+        background: #f8fbff;
+      }
+
+      .marks-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      .marks-table tbody td:first-child {
+        font-weight: 600;
+      }
+
+      .marks-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .summary-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 16px;
+        border-radius: 8px;
+        background: linear-gradient(180deg, #f8fbff 0%, #f0f5ff 100%);
+        border: 1px solid rgba(16, 34, 61, 0.12);
+      }
+
+      .summary-stat span {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+      }
+
+      .summary-stat strong {
+        font-size: 1.5rem;
+        color: #10223d;
+      }
+
+      .empty-message,
+      .loading-message {
+        padding: 32px;
+        text-align: center;
+        border-radius: 8px;
+        background: #f8fbff;
+        border: 1px solid rgba(16, 34, 61, 0.12);
+        color: #64748b;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding: 12px;
+        }
+
+        .term-page {
+          width: 100%;
+        }
+
+        .page-header h3 {
+          font-size: 1.45rem;
+        }
+
+        .page-header p {
+          font-size: 0.95rem;
+        }
+
+        .filter-section {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+
+        .filter-group select,
+        .btn-primary {
+          width: 100%;
+        }
+
+        .marks-summary {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+
+        .marks-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 14px;
+        }
+
+        .marks-term {
+          align-self: stretch;
+          text-align: center;
+          padding: 10px 14px;
+          font-size: 1rem;
+        }
+
+        .marks-table th,
+        .marks-table td {
+          padding: 10px 12px;
+        }
+
+        .summary-stat {
+          padding: 14px;
+        }
+
+        .summary-stat strong {
+          font-size: 1.25rem;
+        }
+
+        .empty-message,
+        .loading-message {
+          padding: 22px 16px;
+          font-size: 0.95rem;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .page {
+          padding: 0;
+        }
+
+        .page-header {
+          display: flex;
+          gap: 14px;
+          align-items: flex-start;
+        }
+
+        .page-header div {
+          min-width: 0;
+        }
+
+        .page-header h3 {
+          margin-top: 2px;
+          line-height: 1.2;
+        }
+
+        .marks-table {
+          font-size: 0.9rem;
+        }
+
+        .marks-table th:nth-child(2),
+        .marks-table td:nth-child(2) {
+          text-align: right;
+          white-space: nowrap;
+        }
+
+        .marks-summary {
+          margin-top: 10px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .marks-table-wrapper {
+          overflow: visible;
+        }
+
+        .marks-table,
+        .marks-table thead,
+        .marks-table tbody,
+        .marks-table tr,
+        .marks-table td {
+          display: block;
+          width: 100%;
+        }
+
+        .marks-table {
+          border-collapse: separate;
+          border-spacing: 0;
+          box-shadow: none;
+          background: transparent;
+        }
+
+        .marks-table thead {
+          display: none;
+        }
+
+        .marks-table tbody tr {
+          margin-bottom: 12px;
+          padding: 12px;
+          border: 1px solid rgba(16, 34, 61, 0.12);
+          border-radius: 14px;
+          background: #ffffff;
+        }
+
+        .marks-table td {
+          padding: 0;
+          border: none;
+          word-break: break-word;
+        }
+
+        .marks-table td:first-child {
+          font-size: 0.95rem;
+          margin-bottom: 8px;
+          color: #10223d;
+        }
+
+        .marks-table td:last-child {
+          text-align: left;
+          color: #0f172a;
+        }
+      }
+    </style>
+
+    <script src="../../assets/js/teacher-auth.js"></script>
+    <script src="../../assets/js/api.js"></script>
+    <script src="view-marks.js"></script>
+  </body>
+</html>

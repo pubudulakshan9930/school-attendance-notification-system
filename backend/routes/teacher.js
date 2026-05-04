@@ -8,7 +8,11 @@ router.use(authenticateToken, requireRole("teacher"));
 router.get("/dashboard", teacherController.getDashboard);
 router.get("/students", teacherController.getStudents);
 router.get("/class-details", teacherController.getClassDetails);
-router.get("/students/:studentId/subjects", teacherController.getStudentSubjects);
+router.get(
+  "/students/:studentId/subjects",
+  teacherController.getStudentSubjects,
+);
+router.get("/student-marks", teacherController.getStudentMarks);
 router.post("/students/register", teacherController.registerStudent);
 router.post("/attendance/save", teacherController.saveAttendance);
 router.post("/attendance/notify", teacherController.notifyAttendance);
