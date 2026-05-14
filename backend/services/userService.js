@@ -1,5 +1,6 @@
 const bcrypt = require("bcrypt");
 const pool = require("../db");
+const { normalizeClassStream } = require("./classCurriculumService");
 
 const TEACHER_ROLE = "teacher";
 
@@ -33,32 +34,38 @@ function createStatusError(message, statusCode) {
   return error;
 }
 
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(value || "").trim(),
+  );
+}
+
 function validateTeacherInput({
   email,
   full_name,
   teacher_code,
   teacher_id,
-  grade,
-  class_section,
+  class_id,
   phone,
   password,
   confirm_password,
 }) {
   const normalizedTeacherId = normalizeTeacherId(teacher_id || teacher_code);
-  const normalizedGrade = normalizeGrade(grade);
-  const normalizedClassSection = normalizeClassSection(class_section);
+  const normalizedClassId = String(class_id || "").trim();
 
   if (
     !email ||
     !full_name ||
     !normalizedTeacherId ||
-    !normalizedGrade ||
-    !normalizedClassSection ||
     !phone ||
     !password ||
     !confirm_password
   ) {
     return { valid: false, message: "All fields are required." };
+  }
+
+  if (!isUuid(normalizedClassId)) {
+    return { valid: false, message: "Please select a valid class." };
   }
 
   const normalizedEmail = normalizeEmail(email);
@@ -88,26 +95,13 @@ function validateTeacherInput({
     return { valid: false, message: "Teacher ID must be provided." };
   }
 
-  if (normalizedGrade < 1 || normalizedGrade > 13) {
-    return { valid: false, message: "Grade must be between 1 and 13." };
-  }
-
-  if (!/^[A-Z]$/.test(normalizedClassSection)) {
-    return {
-      valid: false,
-      message: "Class must be a single capital letter.",
-    };
-  }
-
   return {
     valid: true,
+    full_name: String(full_name).trim(),
     email: normalizedEmail,
     teacher_code: normalizedTeacherId,
-    grade: normalizedGrade,
-    class_section: normalizedClassSection,
-    full_name: String(full_name).trim(),
+    class_id: normalizedClassId,
     phone: String(phone).trim(),
-    password,
   };
 }
 
@@ -129,10 +123,12 @@ async function createTeacher({
   teacher_code,
   grade,
   class_section,
+  class_stream,
   password,
 }) {
   const client = await pool.connect();
   const password_hash = await bcrypt.hash(password, 10);
+  const normalizedStream = normalizeClassStream(class_stream);
 
   try {
     await client.query("BEGIN");
@@ -156,15 +152,16 @@ async function createTeacher({
 
     const academicYear = new Date().getFullYear();
     const classLookupQuery = `
-      SELECT id, grade, section, academic_year, teacher_id
+      SELECT id, grade, section, stream, academic_year, teacher_id
       FROM classes
-      WHERE grade = $1 AND section = $2 AND academic_year = $3
+      WHERE grade = $1 AND section = $2 AND academic_year = $3 AND stream = $4
       LIMIT 1
     `;
     const classLookupResult = await client.query(classLookupQuery, [
       grade,
       class_section,
       academicYear,
+      normalizedStream,
     ]);
 
     let classRecord;
@@ -187,7 +184,7 @@ async function createTeacher({
         UPDATE classes
         SET teacher_id = $1, updated_at = NOW()
         WHERE id = $2
-        RETURNING id, grade, section, academic_year, teacher_id
+        RETURNING id, grade, section, stream, academic_year, teacher_id
       `;
       const classUpdateResult = await client.query(classUpdateQuery, [
         teacher.id,
@@ -202,6 +199,7 @@ async function createTeacher({
       ...teacher,
       grade: classRecord.grade,
       class_section: classRecord.section,
+      class_stream: classRecord.stream,
       academic_year: classRecord.academic_year,
       class_id: classRecord.id,
     };

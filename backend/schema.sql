@@ -25,11 +25,13 @@ CREATE TABLE classes (
     grade SMALLINT NOT NULL CHECK (grade BETWEEN 1 AND 13),
     section TEXT NOT NULL,
     academic_year SMALLINT NOT NULL,
+    max_students SMALLINT NOT NULL DEFAULT 40 CHECK (max_students BETWEEN 1 AND 200),
+    stream TEXT NOT NULL DEFAULT '' CHECK (stream IN ('', 'science', 'biological', 'mathematical', 'art')),
     teacher_id UUID REFERENCES users(id) ON DELETE SET NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (grade, section, academic_year)
+    UNIQUE (grade, section, academic_year, stream)
 );
 
 -- School subjects (compulsory or elective)
@@ -47,6 +49,9 @@ CREATE TABLE subjects (
 CREATE TABLE students (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     full_name TEXT NOT NULL,
+    gender TEXT,
+    city TEXT,
+    address TEXT,
     parent_name TEXT NOT NULL,
     parent_phone TEXT NOT NULL,
     parent_email TEXT,
@@ -131,6 +136,13 @@ CREATE TABLE holidays (
     name TEXT NOT NULL,
     is_public_holiday BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- System key-value settings used by admin dashboard and alerts
+CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Indexes for faster queries

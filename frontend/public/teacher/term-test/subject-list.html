@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Subject List</title>
+    <link rel="stylesheet" href="../../assets/css/global.css" />
+    <link rel="stylesheet" href="../../assets/css/components.css" />
+    <link rel="stylesheet" href="term.css" />
+  </head>
+
+  <body>
+    <main class="term-page">
+      <header class="page-header">
+        <a class="page-nav-link" href="term.html">Change Term</a>
+        <div class="header-content">
+          <h1>📚 Select Subject</h1>
+          <p class="header-subtitle">
+            Term: <strong id="currentTerm" style="color: #10223d"></strong>
+          </p>
+        </div>
+      </header>
+
+      <section class="student-selector-container">
+        <div class="student-list-card">
+          <div class="student-list-header">
+            <h2>Class Subjects</h2>
+            <p>Select a subject to enter student marks</p>
+          </div>
+
+          <div class="student-placeholder" id="subjectListPlaceholder">
+            Loading subjects...
+          </div>
+
+          <ul class="student-list-items" id="subjectList"></ul>
+        </div>
+      </section>
+    </main>
+
+    <script src="../../assets/js/teacher-auth.js"></script>
+    <script src="subject-list.js"></script>
+  </body>
+</html>

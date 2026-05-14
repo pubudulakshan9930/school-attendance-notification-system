@@ -1,12 +1,8 @@
 const pool = require("../db");
-
-const MANDATORY_SUBJECTS = [
-  "Mathematics",
-  "Science",
-  "English",
-  "Language",
-  "Social Studies",
-];
+const {
+  getClassSubjectPlan,
+  resolveStudentSubjectsForClass,
+} = require("../services/classCurriculumService");
 
 function buildSubjectCode(name, subjectGroup) {
   const normalizedName = String(name || "")
@@ -44,15 +40,27 @@ function normalizeSubjectNames(values) {
 
 async function getTeacherCurrentClass(db, teacherId) {
   const classQuery = `
-    SELECT id, grade, section, academic_year
+    SELECT id, grade, section, stream, academic_year
     FROM classes
     WHERE teacher_id = $1
-      AND is_active = true
     ORDER BY academic_year DESC, updated_at DESC, created_at DESC
     LIMIT 1
   `;
 
   const { rows } = await db.query(classQuery, [teacherId]);
+  return rows[0] || null;
+}
+
+async function getTeacherClassById(db, teacherId, classId) {
+  const query = `
+    SELECT id, grade, section, stream, academic_year
+    FROM classes
+    WHERE id = $1
+      AND teacher_id = $2
+    LIMIT 1
+  `;
+
+  const { rows } = await db.query(query, [classId, teacherId]);
   return rows[0] || null;
 }
 
@@ -73,6 +81,8 @@ async function getStudentsByClass(db, classId) {
     SELECT
       s.id,
       s.full_name,
+      s.city,
+      s.address,
       s.parent_name,
       s.parent_phone,
       s.parent_email,
@@ -114,15 +124,128 @@ async function getStudentSubjects(db, studentId) {
       sub.code,
       sub.name,
       sub.subject_group,
-      ss.is_elective
+      ss.is_elective,
+      ss.created_at
     FROM student_subjects ss
     JOIN subjects sub ON sub.id = ss.subject_id
     WHERE ss.student_id = $1
-    ORDER BY sub.subject_group ASC, sub.name ASC
+    ORDER BY ss.created_at ASC, sub.name ASC
   `;
 
   const { rows } = await db.query(query, [studentId]);
   return rows;
+}
+
+function buildClassPlanSubjectDefinitions(plan) {
+  const subjectsByName = new Map();
+
+  const addSubjects = (values, subjectGroup) => {
+    values.forEach((value) => {
+      const name = String(value || "").trim();
+      if (!name) {
+        return;
+      }
+
+      const key = name.toLowerCase();
+      const current = subjectsByName.get(key);
+      if (
+        !current ||
+        (current.subject_group === "elective" && subjectGroup === "compulsory")
+      ) {
+        subjectsByName.set(key, { name, subject_group: subjectGroup });
+      }
+    });
+  };
+
+  addSubjects(plan?.fixed_subjects || [], "compulsory");
+  (plan?.choice_groups || []).forEach((group) => {
+    addSubjects(group?.options || [], "compulsory");
+  });
+  (plan?.elective_groups || []).forEach((group) => {
+    addSubjects(group?.options || [], "elective");
+  });
+
+  return Array.from(subjectsByName.values());
+}
+
+async function ensureSubjectRecord(db, subjectDefinition) {
+  const subjectCode = buildSubjectCode(
+    subjectDefinition.name,
+    subjectDefinition.subject_group,
+  );
+
+  const query = `
+    INSERT INTO subjects (code, name, subject_group, is_active, updated_at)
+    VALUES ($1, $2, $3, true, NOW())
+    ON CONFLICT (code)
+    DO UPDATE SET
+      name = EXCLUDED.name,
+      subject_group = EXCLUDED.subject_group,
+      is_active = true,
+      updated_at = NOW()
+    RETURNING id, code, name, subject_group, created_at
+  `;
+
+  const { rows } = await db.query(query, [
+    subjectCode,
+    subjectDefinition.name,
+    subjectDefinition.subject_group,
+  ]);
+
+  return rows[0] || null;
+}
+
+async function getClassSubjects(db, classId) {
+  const classQuery = `
+    SELECT grade, stream
+    FROM classes
+    WHERE id = $1
+    LIMIT 1
+  `;
+
+  const classResult = await db.query(classQuery, [classId]);
+  const teacherClass = classResult.rows[0] || null;
+  if (!teacherClass) {
+    return [];
+  }
+
+  const plan = await getClassSubjectPlan(
+    teacherClass.grade,
+    teacherClass.stream,
+  );
+
+  if (!plan) {
+    const legacyQuery = `
+      SELECT DISTINCT
+        sub.id,
+        sub.code,
+        sub.name,
+        sub.subject_group,
+        MIN(ss.created_at) as created_at
+      FROM student_subjects ss
+      JOIN subjects sub ON sub.id = ss.subject_id
+      JOIN student_class_assignments sca ON sca.student_id = ss.student_id
+      WHERE sca.class_id = $1
+        AND sca.removed_at IS NULL
+      GROUP BY sub.id, sub.code, sub.name, sub.subject_group
+      ORDER BY sub.subject_group ASC, sub.name ASC
+    `;
+
+    const { rows } = await db.query(legacyQuery, [classId]);
+    return rows;
+  }
+
+  const subjectDefinitions = buildClassPlanSubjectDefinitions(plan);
+  const subjects = [];
+
+  for (const subjectDefinition of subjectDefinitions) {
+    const subject = await ensureSubjectRecord(db, subjectDefinition);
+    if (subject) {
+      subjects.push(subject);
+    }
+  }
+
+  return subjects;
 }
 
 async function getClassStudentsWithSubjects(teacherId) {
@@ -191,25 +314,76 @@ async function createStudentForTeacher(teacherId, payload) {
   try {
     await client.query("BEGIN");
 
-    const teacherClass = await getTeacherCurrentClass(client, teacherId);
+    const genderColumnCheck = await client.query(
+      `
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'students'
+          AND column_name = 'gender'
+        LIMIT 1
+      `,
+    );
+
+    if (genderColumnCheck.rowCount === 0) {
+      await client.query(
+        `ALTER TABLE students ADD COLUMN IF NOT EXISTS gender TEXT`,
+      );
+    }
+
+    const classId = String(payload.class_id || "").trim();
+    const teacherClass = classId
+      ? await getTeacherClassById(client, teacherId, classId)
+      : await getTeacherCurrentClass(client, teacherId);
+
     if (!teacherClass) {
       const error = new Error("You are not assigned to an active class.");
       error.statusCode = 400;
       throw error;
     }
 
-    const studentCode = `STU-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const studentCode = String(payload.student_code || "").trim();
+    if (!studentCode) {
+      const error = new Error("Student ID is required.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const studentName = String(payload.student_name || "").trim();
+    const gender = payload.gender ? String(payload.gender).trim() : "";
+    const parentName = String(payload.parent_name || "").trim();
+    const parentPhone = String(payload.parent_phone || "").trim();
+    const city = String(payload.city || "").trim();
+    const address = String(payload.address || "").trim();
+
+    if (
+      !studentName ||
+      !gender ||
+      !parentName ||
+      !parentPhone ||
+      !city ||
+      !address
+    ) {
+      const error = new Error(
+        "Full name, gender, parent name, parent phone, city, and address are required.",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
     const studentQuery = `
-      INSERT INTO students (full_name, parent_name, parent_phone, parent_email, student_code)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, full_name, parent_name, parent_phone, parent_email, student_code, created_at
+      INSERT INTO students (full_name, gender, parent_name, parent_phone, parent_email, student_code, city, address)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, full_name, gender, parent_name, parent_phone, parent_email, student_code, city, address, created_at
     `;
     const studentResult = await client.query(studentQuery, [
-      payload.student_name.trim(),
-      payload.parent_name.trim(),
-      payload.phone.trim(),
-      payload.email ? payload.email.trim() : null,
+      studentName,
+      gender,
+      parentName,
+      parentPhone,
+      payload.parent_email ? payload.parent_email.trim() : null,
       studentCode,
+      city,
+      address,
     ]);
 
     const student = studentResult.rows[0];
@@ -225,21 +399,15 @@ async function createStudentForTeacher(teacherId, payload) {
       [student.id, teacherClass.id],
     );
 
-    const electiveSubjects = normalizeSubjectNames([
-      payload.elective_subject_1,
-      payload.elective_subject_2,
-      payload.elective_subject_3,
-    ]);
-    const subjectNames = normalizeSubjectNames([
-      ...MANDATORY_SUBJECTS,
-      ...electiveSubjects,
-    ]);
+    const resolvedSubjects = await resolveStudentSubjectsForClass(
+      teacherClass,
+      payload,
+    );
 
     const savedSubjects = [];
-    for (const subjectName of subjectNames) {
-      const isMandatory = MANDATORY_SUBJECTS.some(
-        (value) => value.toLowerCase() === subjectName.toLowerCase(),
-      );
+    for (const subjectEntry of resolvedSubjects.subjects) {
+      const subjectName = subjectEntry.name;
+      const isMandatory = !subjectEntry.is_elective;
       const subjectCode = buildSubjectCode(
         subjectName,
         isMandatory ? "compulsory" : "elective",
@@ -283,6 +451,7 @@ async function createStudentForTeacher(teacherId, payload) {
     return {
       student,
       class: teacherClass,
+      subjectPlan: resolvedSubjects.plan,
       subjects: savedSubjects,
     };
   } catch (error) {
@@ -353,11 +522,11 @@ async function saveAttendanceForTeacher(teacherId, records) {
         reason,
         marked_at
       )
-      VALUES ($1, $2, $3, NULL, NOW())
+      VALUES ($1, $2, $3, $4, NOW())
       ON CONFLICT (attendance_sheet_id, student_id)
       DO UPDATE SET
         status = EXCLUDED.status,
-        reason = NULL,
+        reason = EXCLUDED.reason,
         marked_at = NOW()
       RETURNING id
     `;
@@ -377,6 +546,7 @@ async function saveAttendanceForTeacher(teacherId, records) {
         attendanceSheet.id,
         studentId,
         status,
+        String(record.reason || "").trim() || null,
       ]);
     }
 
@@ -405,15 +575,17 @@ async function getTodayAttendanceBundle(teacherId) {
     };
   }
 
-  const sheetQuery = `
-    SELECT id, attendance_date
-    FROM attendance_sheets
-    WHERE class_id = $1
-      AND attendance_date = CURRENT_DATE
-    ORDER BY updated_at DESC
-    LIMIT 1
-  `;
-  const sheetResult = await pool.query(sheetQuery, [teacherClass.id]);
+  const sheetResult = await pool.query(
+    `
+      SELECT id, attendance_date
+      FROM attendance_sheets
+      WHERE class_id = $1
+        AND attendance_date = CURRENT_DATE
+      ORDER BY updated_at DESC, created_at DESC
+      LIMIT 1
+    `,
+    [teacherClass.id],
+  );
 
   if (sheetResult.rows.length === 0) {
     return {
@@ -428,6 +600,7 @@ async function getTodayAttendanceBundle(teacherId) {
     SELECT
       ar.student_id,
       ar.status,
+      ar.reason,
       s.full_name AS student_name,
       s.parent_name,
       s.parent_phone,
@@ -532,11 +705,11 @@ async function saveTermMarksForTeacher(teacherId, studentId, term, marks) {
 
     const subjectResult = await client.query(
       `
-        SELECT ss.subject_id, sub.name
+        SELECT ss.subject_id, sub.name, ss.created_at
         FROM student_subjects ss
         JOIN subjects sub ON sub.id = ss.subject_id
         WHERE ss.student_id = $1
-        ORDER BY sub.name ASC
+        ORDER BY ss.created_at ASC, sub.name ASC
       `,
       [studentId],
     );
@@ -649,8 +822,171 @@ async function saveTermMarksForTeacher(teacherId, studentId, term, marks) {
   }
 }
 
+async function saveSubjectTermMarksSpreadsheetForTeacher(
+  teacherId,
+  term,
+  subjectId,
+  marks,
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const teacherClass = await getTeacherCurrentClass(client, teacherId);
+    if (!teacherClass) {
+      const error = new Error("You are not assigned to an active class.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const subjectResult = await client.query(
+      `
+        SELECT id, name
+        FROM subjects
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [subjectId],
+    );
+
+    if (subjectResult.rows.length === 0) {
+      const error = new Error("Subject not found.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const classSubjects = await getClassSubjects(client, teacherClass.id);
+    const subjectAllowed = classSubjects.some(
+      (subject) => String(subject.id) === String(subjectId),
+    );
+
+    if (!subjectAllowed) {
+      const error = new Error(
+        "Selected subject does not belong to your active class.",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const students = await getStudentsByClass(client, teacherClass.id);
+    const studentsById = new Map(
+      students.map((student) => [String(student.id), student]),
+    );
+
+    const expectedStudentIds = new Set(
+      students.map((student) => String(student.id)),
+    );
+
+    if (expectedStudentIds.size === 0) {
+      const error = new Error("No students found in your class.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const seenStudentIds = new Set();
+    const normalizedMarks = [];
+
+    for (const entry of marks) {
+      const studentIdValue = String(entry.student_id || "").trim();
+      const markValue = Number(entry.mark);
+
+      if (!studentIdValue) {
+        const error = new Error("Each row must include a student_id.");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (!studentsById.has(studentIdValue)) {
+        const error = new Error(
+          "One or more students do not belong to your class.",
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (seenStudentIds.has(studentIdValue)) {
+        const error = new Error("Duplicate student rows were found.");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (!Number.isFinite(markValue) || markValue < 0 || markValue > 100) {
+        const error = new Error(
+          "Marks must be numeric values between 0 and 100.",
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+
+      seenStudentIds.add(studentIdValue);
+      normalizedMarks.push({
+        student_id: studentIdValue,
+        mark: markValue,
+      });
+    }
+
+    if (seenStudentIds.size !== expectedStudentIds.size) {
+      const missingStudents = students
+        .filter((student) => !seenStudentIds.has(String(student.id)))
+        .map((student) => student.full_name);
+
+      const error = new Error(
+        `Please include marks for every student in the class. Missing: ${missingStudents.join(", ")}`,
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const upsertQuery = `
+      INSERT INTO term_tests (
+        student_id,
+        class_id,
+        term,
+        academic_year,
+        subject_id,
+        mark,
+        exam_date
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE)
+      ON CONFLICT (student_id, class_id, term, academic_year, subject_id)
+      DO UPDATE SET
+        mark = EXCLUDED.mark,
+        exam_date = EXCLUDED.exam_date,
+        updated_at = NOW()
+      RETURNING id, subject_id, mark
+    `;
+
+    const savedRows = [];
+    for (const entry of normalizedMarks) {
+      const result = await client.query(upsertQuery, [
+        entry.student_id,
+        teacherClass.id,
+        term,
+        teacherClass.academic_year,
+        subjectId,
+        entry.mark,
+      ]);
+      savedRows.push(result.rows[0]);
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      class: teacherClass,
+      subject: subjectResult.rows[0],
+      students,
+      savedRows,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function getStudentMarksForTeacher(teacherId, studentId, term) {
-  const pool = require("../db");
   const client = await pool.connect();
 
   try {
@@ -691,7 +1027,7 @@ async function getStudentMarksForTeacher(teacherId, studentId, term) {
           AND tt.class_id = $2
           AND tt.term = $3
           AND tt.academic_year = $4
-        ORDER BY sub.name ASC
+        ORDER BY tt.created_at ASC, sub.name ASC
       `,
       [studentId, teacherClass.id, term, teacherClass.academic_year],
     );
@@ -706,12 +1042,179 @@ async function getStudentMarksForTeacher(teacherId, studentId, term) {
   }
 }
 
+async function getSubjectMarksForTeacher(teacherId, subjectId, term) {
+  const client = await pool.connect();
+
+  try {
+    const teacherClass = await getTeacherCurrentClass(client, teacherId);
+    if (!teacherClass) {
+      const error = new Error("You are not assigned to an active class.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const classSubjects = await getClassSubjects(client, teacherClass.id);
+    const subjectAllowed = classSubjects.some(
+      (subject) => String(subject.id) === String(subjectId),
+    );
+
+    if (!subjectAllowed) {
+      const error = new Error(
+        "Selected subject does not belong to your active class.",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const subjectResult = await client.query(
+      `
+        SELECT id, name, code, subject_group
+        FROM subjects
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [subjectId],
+    );
+
+    if (subjectResult.rows.length === 0) {
+      const error = new Error("Subject not found.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const studentsResult = await client.query(
+      `
+        SELECT
+          s.id AS student_id,
+          s.student_code,
+          s.full_name,
+          s.parent_name,
+          s.parent_phone,
+          s.parent_email,
+          tt.mark,
+          tt.exam_date,
+          tt.updated_at
+        FROM student_class_assignments sca
+        JOIN students s ON s.id = sca.student_id
+        LEFT JOIN term_tests tt
+          ON tt.student_id = s.id
+          AND tt.class_id = sca.class_id
+          AND tt.term = $2
+          AND tt.academic_year = $3
+          AND tt.subject_id = $4
+        WHERE sca.class_id = $1
+          AND sca.removed_at IS NULL
+          AND s.is_active = true
+        ORDER BY s.full_name ASC
+      `,
+      [teacherClass.id, term, teacherClass.academic_year, subjectId],
+    );
+
+    return {
+      class: teacherClass,
+      subject: subjectResult.rows[0],
+      students: studentsResult.rows,
+    };
+  } finally {
+    client.release();
+  }
+}
+
+async function updateStudentDetails(studentId, teacherId, payload) {
+  const client = await pool.connect();
+  try {
+    // Verify student belongs to teacher's class
+    const studentCheck = await client.query(
+      `
+        SELECT s.id
+        FROM students s
+        JOIN student_class_assignments sca ON sca.student_id = s.id
+        JOIN classes c ON c.id = sca.class_id
+        WHERE s.id = $1 AND c.teacher_id = $2 AND sca.removed_at IS NULL AND s.is_active = true
+      `,
+      [studentId, teacherId],
+    );
+
+    if (studentCheck.rows.length === 0) {
+      const error = new Error("Student not found in your class.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Update student details
+    const result = await client.query(
+      `
+        UPDATE students
+        SET 
+          full_name = COALESCE($2, full_name),
+          parent_name = COALESCE($3, parent_name),
+          parent_phone = COALESCE($4, parent_phone),
+          parent_email = COALESCE($5, parent_email),
+          city = COALESCE($6, city),
+          address = COALESCE($7, address),
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, full_name, parent_name, parent_phone, parent_email, city, address, updated_at
+      `,
+      [
+        studentId,
+        payload.full_name,
+        payload.parent_name,
+        payload.parent_phone,
+        payload.parent_email,
+        payload.city,
+        payload.address,
+      ],
+    );
+
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
+async function updateTeacherProfile(teacherId, payload) {
+  const client = await pool.connect();
+  try {
+    // Update teacher profile (user table)
+    const result = await client.query(
+      `
+        UPDATE users
+        SET 
+          full_name = COALESCE($2, full_name),
+          email = COALESCE($3, email),
+          phone = COALESCE($4, phone),
+          updated_at = NOW()
+        WHERE id = $1 AND role = 'teacher'
+        RETURNING id, full_name, email, phone, teacher_code, updated_at
+      `,
+      [
+        teacherId,
+        payload.full_name || null,
+        payload.email || null,
+        payload.phone || null,
+      ],
+    );
+
+    if (result.rows.length === 0) {
+      const error = new Error("Teacher profile not found.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   getTeacherCurrentClass,
   getTeacherProfile,
   getStudentsByClass,
   getStudentMembershipInClass,
   getStudentSubjects,
+  getClassSubjects,
   getClassStudentsWithSubjects,
   createStudentForTeacher,
   saveAttendanceForTeacher,
@@ -719,5 +1222,9 @@ module.exports = {
   insertNotificationLog,
   getStudentSubjectsForTeacher,
   saveTermMarksForTeacher,
+  saveSubjectTermMarksSpreadsheetForTeacher,
   getStudentMarksForTeacher,
+  getSubjectMarksForTeacher,
+  updateStudentDetails,
+  updateTeacherProfile,
 };

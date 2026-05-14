@@ -1,11 +1,11 @@
-const termSelect = document.getElementById("termSelect");
+const termButtons = document.querySelectorAll(".term-button");
 
-termSelect.addEventListener("change", () => {
-  const selectedTerm = termSelect.value;
-  if (!selectedTerm) return;
-
-  localStorage.setItem("selectedTerm", selectedTerm);
-  localStorage.removeItem("selectedStudentId");
-  localStorage.removeItem("selectedStudentName");
-  window.location.href = "student-list.html";
+termButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const selectedTerm = button.getAttribute("data-term");
+    localStorage.setItem("selectedTerm", selectedTerm);
+    localStorage.removeItem("selectedSubjectId");
+    localStorage.removeItem("selectedSubjectName");
+    window.location.href = "subject-list.html";
+  });
 });

@@ -14,3 +14,10 @@ VALUES (
     TRUE
 )
 ON CONFLICT (login_id) DO NOTHING;
+
+INSERT INTO settings (key, value)
+VALUES
+    ('urgent_threshold', '60'),
+    ('warning_threshold', '80'),
+    ('attendance_threshold', '80')
+ON CONFLICT (key) DO NOTHING;

@@ -9,7 +9,7 @@
   <body>
     <main class="page">
       <header class="page-header">
-        <a class="back-link" href="../dashboard.html">← Back to Dashboard</a>
+        <a class="page-nav-link" href="../dashboard.html">Dashboard</a>
         <h1>Assigned Class Details</h1>
         <p>
           View class teacher information and the full student list for your
@@ -20,7 +20,7 @@
       <section class="card">
         <div class="card-header">
           <h2>Class Overview</h2>
-          <button id="loadDetailsButton" type="button">Load Details</button>
+          <button id="loadDetailsButton" type="button">Refresh</button>
         </div>
         <ul id="classMetaList" class="details-list"></ul>
       </section>
@@ -30,6 +30,113 @@
         <ul id="studentsList" class="details-list"></ul>
       </section>
     </main>
+
+    <style>
+      .edit-button {
+        background: #10223d;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        margin-top: 8px;
+      }
+
+      .edit-button:hover {
+        background: #1a3a52;
+      }
+
+      .edit-button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      .save-button {
+        background: #22c55e;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        margin-right: 6px;
+      }
+
+      .save-button:hover {
+        background: #16a34a;
+      }
+
+      .save-button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      .cancel-button {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+
+      .cancel-button:hover {
+        background: #dc2626;
+      }
+
+      .edit-form {
+        display: none;
+        margin-top: 12px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 4px;
+      }
+
+      .edit-form.active {
+        display: block;
+      }
+
+      .form-field {
+        margin-bottom: 10px;
+      }
+
+      .form-field label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .form-field input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+      }
+
+      .form-field input:focus {
+        outline: none;
+        border-color: #10223d;
+        box-shadow: 0 0 0 3px rgba(16, 34, 61, 0.1);
+      }
+
+      .form-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .detail-line.edit-mode {
+        display: none;
+      }
+
+      .edit-form.active ~ .detail-line.edit-mode {
+        display: block;
+      }
+    </style>
 
     <script src="../../assets/js/teacher-auth.js"></script>
     <script src="details.js"></script>

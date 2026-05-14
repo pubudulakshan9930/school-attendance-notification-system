@@ -38,6 +38,9 @@
               <button class="admin-tab" type="button" data-tab="class-details">
                 Class Details
               </button>
+              <button class="admin-tab" type="button" data-tab="subject-plans">
+                Subject Plans
+              </button>
               <button class="admin-tab" type="button" data-tab="alerts">
                 Emergency Alerts
               </button>
@@ -52,40 +55,51 @@
 
           <div class="admin-content">
             <section class="dashboard-stats-grid" aria-label="Key metrics">
-              <article class="teacher-summary-card dashboard-stat-card">
-                <div class="card-header">
-                  <div class="header-content">
-                    <h3 class="card-title">Teachers</h3>
-                    <p class="card-subtitle">Active staff members</p>
-                  </div>
-                  <div class="badge-circle" id="teacherCount">0</div>
-                </div>
-                <div class="card-body">
-                  <div id="teacherSummary" class="teacher-summary-list"></div>
-                </div>
-                <div class="card-footer">
-                  <div class="footer-stat">
-                    <span class="stat-label">Absent</span>
-                    <strong class="stat-number" id="absentTeacherCount"
-                      >0</strong
-                    >
-                  </div>
-                </div>
+              <article class="dashboard-stat-card stat-card-students">
+                <span class="stat-card-icon" aria-hidden="true">👥</span>
+                <span class="stat-label">Registered students</span>
+                <strong id="studentCount" class="stat-value">0</strong>
+                <p class="stat-note">Active students in the system</p>
               </article>
 
-              <article class="dashboard-stat-card">
+              <article class="dashboard-stat-card stat-card-teachers">
+                <span class="stat-card-icon" aria-hidden="true">👩‍🏫</span>
+                <span class="stat-label">Teachers</span>
+                <strong id="teacherCount" class="stat-value">0</strong>
+                <p class="stat-note">Active staff members</p>
+              </article>
+
+              <article class="dashboard-stat-card stat-card-present">
+                <span class="stat-card-icon" aria-hidden="true">📈</span>
+                <span class="stat-label">Present today</span>
+                <span id="presentCount" class="stat-value">0</span>
+
+                <p class="stat-note">
+                  <strong id="presentRate">0%</strong>
+                </p>
+              </article>
+            </section>
+
+            <section
+              class="dashboard-stats-grid dashboard-stats-grid-secondary"
+              aria-label="Secondary metrics"
+            >
+              <article class="dashboard-stat-card stat-card-classes">
+                <span class="stat-card-icon" aria-hidden="true">🏫</span>
                 <span class="stat-label">Created classes</span>
                 <strong id="classCount" class="stat-value">0</strong>
                 <p class="stat-note">Active classes this year</p>
               </article>
 
-              <article class="dashboard-stat-card">
+              <article class="dashboard-stat-card stat-card-tools">
+                <span class="stat-card-icon" aria-hidden="true">🛠️</span>
                 <span class="stat-label">Admin tools</span>
                 <strong class="stat-value">5</strong>
                 <p class="stat-note">Create, manage and review sections</p>
               </article>
 
-              <article class="dashboard-stat-card">
+              <article class="dashboard-stat-card stat-card-reports">
+                <span class="stat-card-icon" aria-hidden="true">📊</span>
                 <span class="stat-label">Reports</span>
                 <strong class="stat-value">2</strong>
                 <p class="stat-note">Attendance and term-test reports</p>
@@ -120,11 +134,29 @@
                         placeholder="Class (e.g., A)"
                         required
                       />
+                      <select name="stream">
+                        <option value="">Not required</option>
+                        <option value="biological">Biological Stream</option>
+                        <option value="mathematical">
+                          Mathematical Stream
+                        </option>
+                        <option value="art">Art Stream</option>
+                      </select>
                       <input
                         name="academicYear"
                         type="number"
                         min="2000"
                         max="2100"
+                        placeholder="Academic Year"
+                        required
+                      />
+                      <input
+                        name="maxStudents"
+                        type="number"
+                        min="1"
+                        max="200"
+                        step="1"
+                        placeholder="Max Students"
                         required
                       />
                       <button type="submit">Create Class</button>
@@ -163,6 +195,9 @@
                     <select name="grade" required>
                       <option value="">Select Grade</option>
                     </select>
+                    <select name="classStream" required>
+                      <option value="">Not required</option>
+                    </select>
                     <select name="classSection" required>
                       <option value="">Select Class</option>
                     </select>
@@ -190,6 +225,18 @@
                       placeholder="Confirm Password"
                       required
                     />
+                    <label
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        font-size: 0.9rem;
+                        color: #374151;
+                      "
+                    >
+                      <input id="toggleTeacherPassword" type="checkbox" /> Show
+                      password
+                    </label>
                     <button type="submit" class="form-full">
                       Register Teacher
                     </button>
@@ -213,6 +260,9 @@
                     <select id="classDetailsGrade" required>
                       <option value="">Select Grade</option>
                     </select>
+                    <select id="classDetailsStream" required>
+                      <option value="">Not required</option>
+                    </select>
                     <select id="classDetailsSection" required>
                       <option value="">Select Class</option>
                     </select>
@@ -231,6 +281,23 @@
                     <ul id="classStudentsDetails" class="result-list"></ul>
                   </article>
                 </div>
+              </section>
+
+              <section class="admin-panel" data-panel="subject-plans">
+                <div class="panel-card">
+                  <div class="panel-copy">
+                    <h2>All Grade Subject Plans</h2>
+                    <p>
+                      View the curriculum structure for every grade and stream
+                      supported by the school.
+                    </p>
+                  </div>
+                  <button type="button" id="loadSubjectPlans">
+                    Refresh Subject Plans
+                  </button>
+                </div>
+
+                <div id="subjectPlansBoard" class="subject-plans-board"></div>
               </section>
 
               <section class="admin-panel" data-panel="alerts">
@@ -371,6 +438,12 @@
             </select>
           </div>
           <div class="form-group">
+            <label for="attendanceStream">Stream</label>
+            <select id="attendanceStream" required>
+              <option value="">Not required</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label for="attendanceClass">Class</label>
             <select id="attendanceClass" required>
               <option value="">Select Class</option>
@@ -416,6 +489,12 @@
             <label for="termGrade">Grade</label>
             <select id="termGrade" required>
               <option value="">Select Grade</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="termStream">Stream</label>
+            <select id="termStream" required>
+              <option value="">Not required</option>
             </select>
           </div>
           <div class="form-group">
@@ -545,6 +624,7 @@
     </style>
 
     <script src="../assets/js/admin-auth.js"></script>
+    <script src="../assets/js/class-stream-utils.js"></script>
     <script src="./admin.js"></script>
   </body>
 </html>

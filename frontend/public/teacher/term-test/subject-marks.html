@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Subject Marks Entry</title>
+    <link rel="stylesheet" href="../../assets/css/global.css" />
+    <link rel="stylesheet" href="../../assets/css/components.css" />
+    <link rel="stylesheet" href="term.css" />
+  </head>
+
+  <body>
+    <main class="term-page">
+      <header class="page-header">
+        <div class="header-content">
+          <h1>📝 Enter Student Marks</h1>
+          <p class="header-subtitle">
+            Term: <strong id="currentTerm" style="color: #10223d"></strong> —
+            Subject:
+            <strong id="currentSubject" style="color: #10223d"></strong>
+          </p>
+        </div>
+      </header>
+
+      <section class="marks-entry-card">
+        <div class="marks-entry-header">
+          <div>
+            <h2 id="subjectName"></h2>
+            <p id="marksHint">
+              Enter marks for each student (0-100) and click Save
+            </p>
+          </div>
+        </div>
+
+        <section class="spreadsheet-upload-card" aria-labelledby="uploadTitle">
+          <div class="spreadsheet-upload-header">
+            <div>
+              <h3 id="uploadTitle">Bulk upload result sheet</h3>
+              <p>
+                Upload a CSV, XLS, or XLSX file with one row per student to
+                preview and save marks in bulk.
+              </p>
+            </div>
+            <a
+              class="btn btn-secondary upload-template-link"
+              href="./subject-marks-upload-template.csv"
+              download
+            >
+              Download template
+            </a>
+          </div>
+
+          <div class="spreadsheet-upload-controls">
+            <label class="spreadsheet-file-label" for="spreadsheetFile">
+              Spreadsheet file
+            </label>
+            <input type="file" id="spreadsheetFile" accept=".csv,.xls,.xlsx" />
+            <div class="spreadsheet-upload-actions">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                id="previewButton"
+              >
+                Preview Spreadsheet
+              </button>
+              <button type="button" class="btn btn-primary" id="uploadButton">
+                Upload & Save Marks
+              </button>
+            </div>
+          </div>
+
+          <p class="spreadsheet-upload-note">
+            Required columns: <strong>student_id</strong> and
+            <strong>mark</strong>.
+          </p>
+
+          <div
+            class="spreadsheet-upload-status"
+            id="uploadStatus"
+            aria-live="polite"
+          ></div>
+          <div class="spreadsheet-preview" id="spreadsheetPreview"></div>
+        </section>
+
+        <form class="subject-list" id="studentList"></form>
+
+        <div class="marks-actions">
+          <button type="button" class="btn btn-primary" id="saveButton">
+            ✓ Save Marks
+          </button>
+          <a class="btn btn-secondary page-nav-link" href="subject-list.html">
+            Change Subject
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <script src="../../assets/js/teacher-auth.js"></script>
+    <script src="subject-marks.js"></script>
+  </body>
+</html>

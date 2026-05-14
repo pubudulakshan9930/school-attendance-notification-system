@@ -55,15 +55,30 @@ async function signup(req, res) {
       });
     }
 
+    // Fetch class details
+    const classInfo = await authRepository.getClassById(validation.class_id);
+    if (!classInfo) {
+      return res.status(400).json({ error: "Invalid class selected." });
+    }
+    if (classInfo.teacher_id) {
+      return res
+        .status(409)
+        .json({ error: "This class is already assigned to another teacher." });
+    }
+
     const teacher = await createTeacher({
       full_name: validation.full_name,
       email: validation.email,
       phone: validation.phone,
       teacher_code: validation.teacher_code,
-      grade: validation.grade,
-      class_section: validation.class_section,
+      grade: classInfo.grade,
+      class_section: classInfo.section,
+      class_stream: classInfo.stream,
       password: normalizedBody.password,
     });
+
+    // Update class with teacher_id
+    await authRepository.assignTeacherToClass(classInfo.id, teacher.id);
 
     return res.status(201).json({ success: true, user: teacher });
   } catch (error) {

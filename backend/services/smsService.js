@@ -50,6 +50,7 @@ function formatAttendanceSms({
   className,
   attendanceDate,
   status,
+  reason,
 }) {
   const p = String(parentName || "Parent").trim();
   const s = String(studentName || "student").trim();
@@ -57,6 +58,7 @@ function formatAttendanceSms({
   const normalizedStatus = String(status || "absent")
     .trim()
     .toLowerCase();
+  const lateReason = String(reason || "").trim();
 
   const baseDate = attendanceDate ? new Date(attendanceDate) : new Date();
   const dateInSriLanka = new Intl.DateTimeFormat("en-GB", {
@@ -66,7 +68,13 @@ function formatAttendanceSms({
     day: "2-digit",
   }).format(baseDate);
 
-  return `Dear ${p}, Your child ${s} ${normalizedStatus} at school on ${dateInSriLanka} at ${c}.`;
+  const message = `Dear ${p}, Your child ${s} ${normalizedStatus} at school on ${dateInSriLanka} at ${c}.`;
+
+  if (normalizedStatus === "late" && lateReason) {
+    return `${message} Reason: ${lateReason}.`;
+  }
+
+  return message;
 }
 
 function formatTermMarksSms({ parentName, term, className, subjectMarks }) {

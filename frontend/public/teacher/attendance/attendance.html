@@ -3,39 +3,59 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Attendance</title>
+    <title>Mark Attendance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@100..900&family=Roboto:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/global.css" />
+    <link rel="stylesheet" href="../../assets/css/components.css" />
     <link rel="stylesheet" href="attendance.css" />
   </head>
 
   <body>
-    <header>
-      <a
-        class="back-button"
-        href="../dashboard.html"
-        aria-label="Back to Dashboard"
-        >←</a
-      >
-      <h2>Attendance - Today</h2>
-      <p class="date-text" id="todayDate"></p>
-    </header>
+    <div class="page">
+      <header class="header">
+        <div class="header-content">
+          <div class="attendance-info">
+            <p class="header-kicker">Attendance Date</p>
+            <h1 class="attendance-date" id="attendanceDate">Today</h1>
+            <p class="class-info" id="classInfo">Grade - Class</p>
+          </div>
+        </div>
+      </header>
 
-    <section class="attendance-table" id="attendanceTableContainer">
-      <div class="table-row header-row">
-        <div>Name</div>
-        <div>Present</div>
-        <div>Absent</div>
-        <div>Late</div>
-      </div>
-      <div id="studentRowsContainer"></div>
-    </section>
+      <main class="main">
+        <div class="attendance-container">
+          <div class="filter-bar">
+            <select id="filterStatus" class="filter-select">
+              <option value="all">All Students</option>
+              <option value="marked">Marked</option>
+              <option value="unmarked">Not Marked</option>
+            </select>
+          </div>
 
-    <div class="actions">
-      <button id="saveAttendanceButton" type="button">Save Attendance</button>
-      <button id="notifyParentsButton" class="secondary" type="button">
-        Notify Parents
-      </button>
+          <div id="studentCardsContainer" class="students-grid"></div>
+
+          <div class="actions">
+            <button id="saveAttendanceButton" class="btn-primary" type="button">
+              Save Attendance
+            </button>
+            <button
+              id="notifyParentsButton"
+              class="btn-secondary"
+              type="button"
+            >
+              Notify Parents
+            </button>
+          </div>
+        </div>
+      </main>
     </div>
 
+    <script src="../../assets/js/class-stream-utils.js"></script>
     <script src="../../assets/js/teacher-auth.js"></script>
     <script src="attendance.js"></script>
   </body>

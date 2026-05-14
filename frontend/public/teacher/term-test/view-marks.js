@@ -1,173 +1,259 @@
-const BASE_URL = "http://localhost:4000";
-const API_BASE = `${BASE_URL}/api`;
+const API_BASE = "/api";
 
-let students = [];
+const termSelect = document.getElementById("termSelect");
+const subjectSelect = document.getElementById("subjectSelect");
+const subjectFilterGroup = document.getElementById("subjectFilterGroup");
+const instructionMessage = document.getElementById("instructionMessage");
+const marksContainer = document.getElementById("marksContainer");
+const marksTableBody = document.getElementById("marksTableBody");
+const noMarksMessage = document.getElementById("noMarksMessage");
+const loadingMessage = document.getElementById("loadingMessage");
+const subjectNameDisplay = document.getElementById("subjectNameDisplay");
+const classDisplay = document.getElementById("classDisplay");
+const termDisplay = document.getElementById("termDisplay");
+const totalStudentsDisplay = document.getElementById("totalStudents");
+const marksRecordedDisplay = document.getElementById("marksRecorded");
+const averageMarksDisplay = document.getElementById("averageMarks");
+
+let subjects = [];
 
 document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
 });
 
-async function loadStudents() {
-  try {
-    const response = await fetch(`${API_BASE}/teacher/students`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("sureki_token")}`,
-      },
-    });
+function getToken() {
+  return localStorage.getItem("sureki_token");
+}
 
-    if (!response.ok) {
-      throw new Error("Failed to load students");
-    }
+function getTermLabel(term) {
+  const termLabels = {
+    1: "First Term",
+    2: "Second Term",
+    3: "Third Term",
+  };
 
-    const data = await response.json();
-    students = data.data || data.students || [];
+  return termLabels[term] || `Term ${term}`;
+}
 
-    populateStudentSelect();
-    document.getElementById("studentSelect").disabled = false;
-  } catch (error) {
-    console.error("Error loading students:", error);
-    document.getElementById("studentSelect").innerHTML =
-      '<option value="">Error loading students</option>';
+function getClassLabel(classInfo) {
+  if (!classInfo) {
+    return "Assigned class";
   }
+
+  const yearPrefix = classInfo.academic_year
+    ? `${classInfo.academic_year} `
+    : "";
+  const parts = [
+    `${yearPrefix}Grade ${classInfo.grade}`.trim(),
+    `Class ${classInfo.section}`,
+  ];
+
+  if (classInfo.stream) {
+    parts.push(String(classInfo.stream).replace(/_/g, " "));
+  }
+
+  return parts.join(" - ");
 }
 
-function populateStudentSelect() {
-  const select = document.getElementById("studentSelect");
-  select.innerHTML = '<option value="">Select Student</option>';
-
-  students.forEach((student) => {
-    const option = document.createElement("option");
-    option.value = student.id;
-    option.textContent = student.full_name;
-    select.appendChild(option);
-  });
+function resetMarksView() {
+  marksTableBody.innerHTML = "";
+  marksContainer.style.display = "none";
+  noMarksMessage.style.display = "none";
+  loadingMessage.style.display = "none";
 }
 
-function setupEventListeners() {
-  const termSelect = document.getElementById("termSelect");
-  const studentSelect = document.getElementById("studentSelect");
-  const viewMarksBtn = document.getElementById("viewMarksBtn");
-
-  termSelect.addEventListener("change", () => {
-    if (termSelect.value) {
-      loadStudents();
-    }
-    updateViewMarksButton();
-  });
-  studentSelect.addEventListener("change", updateViewMarksButton);
-  viewMarksBtn.addEventListener("click", fetchAndDisplayMarks);
+function resetSubjectSelect(message = "Select Subject") {
+  subjectSelect.innerHTML = `<option value="">${message}</option>`;
+  subjectSelect.disabled = true;
 }
 
-function updateViewMarksButton() {
-  const term = document.getElementById("termSelect").value;
-  const student = document.getElementById("studentSelect").value;
-  const btn = document.getElementById("viewMarksBtn");
-
-  btn.disabled = !term || !student;
-}
-
-async function fetchAndDisplayMarks() {
-  const term = document.getElementById("termSelect").value;
-  const student_id = document.getElementById("studentSelect").value;
-
-  if (!term || !student_id) {
-    alert("Please select both term and student");
+async function loadSubjectsForTerm() {
+  const token = getToken();
+  if (!token) {
+    window.location.href = "/index.html";
     return;
   }
 
-  const studentName = document.querySelector(
-    `#studentSelect option[value="${student_id}"]`,
-  ).textContent;
+  subjectFilterGroup.style.display = "block";
+  resetSubjectSelect("Loading subjects...");
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/subjects`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to load subjects.");
+    }
+
+    subjects = data.data || [];
+    populateSubjectSelect();
+    instructionMessage.style.display = "block";
+    instructionMessage.textContent =
+      subjects.length > 0
+        ? "Select a subject to view the class marks."
+        : "No subjects assigned for your class.";
+  } catch (error) {
+    console.error("Error loading subjects:", error);
+    subjects = [];
+    resetSubjectSelect("Error loading subjects");
+    instructionMessage.style.display = "block";
+    instructionMessage.textContent =
+      error.message || "Unable to load class subjects.";
+  }
+}
+
+function populateSubjectSelect() {
+  subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+
+  subjects.forEach((subject) => {
+    const option = document.createElement("option");
+    option.value = subject.id;
+    option.textContent = subject.name;
+    subjectSelect.appendChild(option);
+  });
+
+  subjectSelect.disabled = subjects.length === 0;
+}
+
+function setupEventListeners() {
+  termSelect.addEventListener("change", async () => {
+    resetMarksView();
+
+    if (!termSelect.value) {
+      subjectFilterGroup.style.display = "none";
+      resetSubjectSelect();
+      instructionMessage.style.display = "block";
+      instructionMessage.textContent =
+        "Select a term to load the available subjects.";
+      return;
+    }
+
+    instructionMessage.style.display = "none";
+    await loadSubjectsForTerm();
+  });
+
+  subjectSelect.addEventListener("change", async () => {
+    resetMarksView();
+
+    if (!termSelect.value || !subjectSelect.value) {
+      return;
+    }
+
+    instructionMessage.style.display = "none";
+    await fetchAndDisplayMarks();
+  });
+}
+
+async function fetchAndDisplayMarks() {
+  const term = termSelect.value;
+  const subjectId = subjectSelect.value;
+
+  if (!term || !subjectId) {
+    return;
+  }
+
+  const token = getToken();
+  if (!token) {
+    window.location.href = "/index.html";
+    return;
+  }
 
   showLoadingMessage();
+  instructionMessage.style.display = "none";
 
   try {
     const response = await fetch(
-      `${API_BASE}/teacher/student-marks?student_id=${student_id}&term=${term}`,
+      `${API_BASE}/teacher/student-marks?term=${encodeURIComponent(term)}&subject_id=${encodeURIComponent(subjectId)}`,
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("sureki_token")}`,
+          Authorization: `Bearer ${token}`,
         },
       },
     );
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        showNoMarksMessage();
-        return;
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
     const data = await response.json();
 
-    if (!data.success || !data.data.marks || data.data.marks.length === 0) {
-      showNoMarksMessage();
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to load marks.");
+    }
+
+    const payload = data.data || {};
+    const students = payload.students || [];
+
+    if (students.length === 0) {
+      showNoMarksMessage("No students found for the selected class.");
       return;
     }
 
-    displayMarks(data.data);
+    displayMarks(payload);
   } catch (error) {
     console.error("Error fetching marks:", error);
-    alert("Failed to load marks. Please try again.");
+    showNoMarksMessage(error.message || "Failed to load marks.");
+  } finally {
     hideLoadingMessage();
   }
 }
 
 function displayMarks(data) {
-  hideLoadingMessage();
+  const { class: classInfo, subject, term, students = [] } = data;
 
-  const { student, class: classInfo, term, marks } = data;
+  instructionMessage.style.display = "none";
+  subjectNameDisplay.textContent = subject?.name || "Selected Subject";
+  classDisplay.textContent = getClassLabel(classInfo);
+  termDisplay.textContent = getTermLabel(term);
 
-  document.getElementById("studentNameDisplay").textContent = student.full_name;
-  document.getElementById("classDisplay").textContent = classInfo.name;
+  marksTableBody.innerHTML = "";
 
-  const termNames = {
-    1: "First Term",
-    2: "Second Term",
-    3: "Third Term",
-  };
-  document.getElementById("termDisplay").textContent =
-    termNames[term] || `Term ${term}`;
+  let marksTotal = 0;
+  let marksRecorded = 0;
 
-  const tableBody = document.getElementById("marksTableBody");
-  tableBody.innerHTML = "";
+  students.forEach((student) => {
+    const markValue =
+      student.mark === null || student.mark === undefined || student.mark === ""
+        ? null
+        : Number(student.mark);
 
-  let totalMarks = 0;
-  marks.forEach((mark) => {
-    const markValue = Number(mark.mark) || 0;
+    if (markValue !== null && Number.isFinite(markValue)) {
+      marksTotal += markValue;
+      marksRecorded += 1;
+    }
+
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td>${mark.subject_name}</td>
-      <td><strong>${markValue}</strong>/100</td>
+      <td>${student.student_code || "N/A"}</td>
+      <td>${student.full_name || "N/A"}</td>
+      <td>${markValue === null ? '<span class="mark-empty">N/A</span>' : `<strong>${markValue}</strong>/100`}</td>
     `;
-    tableBody.appendChild(row);
-    totalMarks += markValue;
+    marksTableBody.appendChild(row);
   });
 
-  const average = marks.length > 0 ? totalMarks / marks.length : 0;
+  const average = marksRecorded > 0 ? marksTotal / marksRecorded : 0;
 
-  document.getElementById("totalMarks").textContent = totalMarks;
-  document.getElementById("averageMarks").textContent =
-    `${average.toFixed(1)}%`;
-  document.getElementById("subjectCount").textContent = marks.length;
+  totalStudentsDisplay.textContent = String(students.length);
+  marksRecordedDisplay.textContent = String(marksRecorded);
+  averageMarksDisplay.textContent = `${average.toFixed(1)}%`;
 
-  document.getElementById("marksContainer").style.display = "grid";
-  document.getElementById("noMarksMessage").style.display = "none";
+  marksContainer.style.display = "grid";
+  noMarksMessage.style.display = "none";
 }
 
 function showLoadingMessage() {
-  document.getElementById("loadingMessage").style.display = "block";
-  document.getElementById("marksContainer").style.display = "none";
-  document.getElementById("noMarksMessage").style.display = "none";
+  loadingMessage.style.display = "block";
+  marksContainer.style.display = "none";
+  noMarksMessage.style.display = "none";
 }
 
 function hideLoadingMessage() {
-  document.getElementById("loadingMessage").style.display = "none";
+  loadingMessage.style.display = "none";
 }
 
-function showNoMarksMessage() {
-  document.getElementById("noMarksMessage").style.display = "block";
-  document.getElementById("marksContainer").style.display = "none";
-  hideLoadingMessage();
+function showNoMarksMessage(message) {
+  instructionMessage.style.display = "none";
+  noMarksMessage.querySelector("p").textContent = message;
+  noMarksMessage.style.display = "block";
+  marksContainer.style.display = "none";
 }

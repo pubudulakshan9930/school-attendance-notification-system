@@ -3,79 +3,238 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Register Student</title>
+    <title>Register Student - Sureki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@100..900&family=Roboto:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/global.css" />
+    <link rel="stylesheet" href="../../assets/css/components.css" />
     <link rel="stylesheet" href="register.css" />
   </head>
-
   <body>
-    <div class="container">
-      <a
-        class="back-button"
-        href="../dashboard.html"
-        aria-label="Back to Dashboard"
-        >←</a
-      >
-      <h2>Register Student</h2>
+    <div class="page">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <div class="teacher-info">
+            <h1 class="teacher-name" id="teacherName">Teacher Name</h1>
+            <p class="class-info" id="classInfo">Grade - Class</p>
+          </div>
+          <div class="header-icon">👤</div>
+        </div>
+      </header>
 
-      <section class="mandatory-section">
-        <h3>Mandatory Subjects</h3>
-        <ul class="mandatory-list">
-          <li>Mathematics</li>
-          <li>Science</li>
-          <li>English</li>
-          <li>Language</li>
-          <li>Social Studies</li>
-        </ul>
-      </section>
+      <!-- Main Content -->
+      <main class="main">
+        <div class="content-wrapper">
+          <!-- Tab Navigation -->
+          <div class="tab-navigation">
+            <button class="tab-button active" data-tab="manual">
+              <span class="tab-icon">✏️</span>
+              <span>Manual Entry</span>
+            </button>
+            <button class="tab-button" data-tab="bulk">
+              <span class="tab-icon">📤</span>
+              <span>Bulk Upload</span>
+            </button>
+          </div>
 
-      <form id="registerStudentForm">
-        <input
-          name="student_name"
-          placeholder="Student Name"
-          aria-label="Student Name"
-          required
-        />
-        <input
-          name="parent_name"
-          placeholder="Parent Name"
-          aria-label="Parent Name"
-          required
-        />
-        <input
-          name="phone"
-          placeholder="Phone Number"
-          aria-label="Phone Number"
-          required
-        />
-        <input name="email" placeholder="Email (optional)" aria-label="Email" />
+          <!-- Manual Entry Tab -->
+          <div id="manualTab" class="tab-pane active">
+            <form id="manualForm" class="registration-form">
+              <!-- Student Information Section -->
+              <div class="form-section">
+                <div class="section-header">
+                  <h2 class="section-title">
+                    <span class="section-icon">👨‍🎓</span>
+                    Student Information
+                  </h2>
+                </div>
+                <div class="form-group-row">
+                  <div class="form-group">
+                    <label for="student_name">Student Name</label>
+                    <input
+                      id="student_name"
+                      name="student_name"
+                      type="text"
+                      placeholder="Full name"
+                      required
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="student_code">Student ID</label>
+                    <input
+                      id="student_code"
+                      name="student_code"
+                      type="text"
+                      placeholder="Student ID"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
 
-        <select name="elective_subject_1" aria-label="Elective Subject 1">
-          <option value="">Select Elective Subject 1</option>
-          <option value="Health and Physical Education">
-            Health and Physical Education
-          </option>
-          <option value="ICT">ICT</option>
-          <option value="Art">Art</option>
-        </select>
+              <!-- Parent Information Section -->
+              <div class="form-section">
+                <div class="section-header">
+                  <h2 class="section-title">
+                    <span class="section-icon">👨‍👩‍👧</span>
+                    Parent Information
+                  </h2>
+                </div>
+                <div class="form-group-row">
+                  <div class="form-group">
+                    <label for="parent_name">Parent Name</label>
+                    <input
+                      id="parent_name"
+                      name="parent_name"
+                      type="text"
+                      placeholder="Full name"
+                      required
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="parent_phone">Phone Number</label>
+                    <input
+                      id="parent_phone"
+                      name="parent_phone"
+                      type="tel"
+                      placeholder="+94 7X XXX XXXX"
+                      required
+                    />
+                  </div>
+                </div>
+                <div class="form-group-row">
+                  <div class="form-group">
+                    <label for="parent_email">Email (Optional)</label>
+                    <input
+                      id="parent_email"
+                      name="parent_email"
+                      type="email"
+                      placeholder="parent@example.com"
+                    />
+                  </div>
+                </div>
+              </div>
 
-        <select name="elective_subject_2" aria-label="Elective Subject 2">
-          <option value="">Select Elective Subject 2</option>
-          <option value="Geography">Geography</option>
-          <option value="Accounting">Accounting</option>
-          <option value="International Studies">International Studies</option>
-        </select>
+              <!-- Address Information Section -->
+              <div class="form-section">
+                <div class="section-header">
+                  <h2 class="section-title">
+                    <span class="section-icon">📍</span>
+                    Address
+                  </h2>
+                </div>
+                <div class="form-group">
+                  <label for="address">Street Address</label>
+                  <input
+                    id="address"
+                    name="address"
+                    type="text"
+                    placeholder="Street address"
+                    required
+                  />
+                </div>
+                <div class="form-group-row">
+                  <div class="form-group">
+                    <label for="city">City</label>
+                    <input
+                      id="city"
+                      name="city"
+                      type="text"
+                      placeholder="City"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
 
-        <select name="elective_subject_3" aria-label="Elective Subject 3">
-          <option value="">Select Elective Subject 3</option>
-          <option value="Agricultural Science">Agricultural Science</option>
-          <option value="Culinary Arts">Culinary Arts</option>
-          <option value="Electronics">Electronics</option>
-        </select>
+              <!-- Subject Selection Section -->
+              <div class="form-section">
+                <div class="section-header">
+                  <h2 class="section-title">
+                    <span class="section-icon">📚</span>
+                    Subject Selection
+                  </h2>
+                </div>
+                <div id="subjectChoices" class="subject-selection"></div>
+              </div>
 
-        <button type="submit">Register</button>
-      </form>
+              <!-- Form Actions -->
+              <div class="form-actions">
+                <button type="submit" class="btn-primary btn-lg">
+                  <span>Register Student</span>
+                </button>
+              </div>
+            </form>
+
+            <!-- Status Message -->
+            <div id="status" class="status-message"></div>
+          </div>
+
+          <!-- Bulk Upload Tab -->
+          <div id="bulkTab" class="tab-pane">
+            <div class="upload-container">
+              <form id="bulkForm" enctype="multipart/form-data">
+                <div class="upload-box">
+                  <div class="upload-icon">📁</div>
+                  <h3>Upload CSV File</h3>
+                  <p class="upload-description">
+                    Select a CSV file with student data to register multiple
+                    students at once
+                  </p>
+                  <input
+                    type="file"
+                    name="csvFile"
+                    accept=".csv"
+                    class="file-input"
+                    required
+                  />
+                  <p class="file-requirement">CSV file (Max 10MB)</p>
+                </div>
+
+                <div class="csv-instructions">
+                  <h4>CSV File Format</h4>
+                  <p>Your CSV should include these columns in order:</p>
+                  <div class="column-list">
+                    <code>Full Name</code>
+                    <code>Gender</code>
+                    <code>Student ID</code>
+                    <code>Parent Name</code>
+                    <code>Parent Phone</code>
+                    <code>Parent Email</code>
+                    <code>City</code>
+                    <code>Address</code>
+                    <code>Category 1</code>
+                    <code>Category 2</code>
+                    <code>Category 3</code>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button type="submit" class="btn-primary btn-lg">
+                    <span>Upload Students</span>
+                  </button>
+                </div>
+              </form>
+
+              <!-- Status Message -->
+              <div id="bulkStatus" class="status-message"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="page-navigation">
+          <a href="../dashboard.html" class="page-nav-link"> Dashboard </a>
+        </div>
+      </main>
     </div>
-    <script src="../../assets/js/teacher-auth.js"></script>
+
+    <script src="../../assets/js/class-stream-utils.js"></script>
     <script src="register.js"></script>
   </body>
 </html>

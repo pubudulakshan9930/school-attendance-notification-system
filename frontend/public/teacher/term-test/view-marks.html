@@ -12,15 +12,10 @@
   <body>
     <main class="term-page">
       <header class="page-header">
-        <a
-          class="back-button"
-          href="../dashboard.html"
-          aria-label="Back to Dashboard"
-          >←</a
-        >
+        <a class="page-nav-link" href="../dashboard.html">Dashboard</a>
         <div>
           <h3>View Student Marks</h3>
-          <p>Select a term and student to view their exam marks.</p>
+          <p>Select a term, then choose a subject to view class marks.</p>
         </div>
       </header>
 
@@ -35,22 +30,22 @@
           </select>
         </div>
 
-        <div class="filter-group">
-          <label for="studentSelect">Select Student</label>
-          <select id="studentSelect" disabled>
-            <option value="">Select Student</option>
+        <div class="filter-group" id="subjectFilterGroup" style="display: none">
+          <label for="subjectSelect">Select Subject</label>
+          <select id="subjectSelect" disabled>
+            <option value="">Select Subject</option>
           </select>
         </div>
 
-        <button id="viewMarksBtn" class="btn-primary" disabled>
-          View Marks
-        </button>
+        <div class="filter-note">
+          Term selection unlocks the class subjects for that term.
+        </div>
       </section>
 
       <section id="marksContainer" class="marks-section" style="display: none">
         <div class="marks-header">
           <div>
-            <h4 id="studentNameDisplay"></h4>
+            <h4 id="subjectNameDisplay"></h4>
             <p id="classDisplay"></p>
           </div>
           <div class="marks-term">
@@ -62,7 +57,8 @@
           <table class="marks-table">
             <thead>
               <tr>
-                <th>Subject</th>
+                <th>Student Code</th>
+                <th>Student Name</th>
                 <th>Marks</th>
               </tr>
             </thead>
@@ -74,22 +70,29 @@
 
         <div class="marks-summary">
           <div class="summary-stat">
-            <span>Total Marks</span>
-            <strong id="totalMarks">0/100</strong>
+            <span>Total Students</span>
+            <strong id="totalStudents">0</strong>
           </div>
           <div class="summary-stat">
-            <span>Average</span>
+            <span>Marks Recorded</span>
+            <strong id="marksRecorded">0</strong>
+          </div>
+          <div class="summary-stat">
+            <span>Average Mark</span>
             <strong id="averageMarks">0%</strong>
-          </div>
-          <div class="summary-stat">
-            <span>Subjects</span>
-            <strong id="subjectCount">0</strong>
           </div>
         </div>
       </section>
 
+      <div id="instructionMessage" class="empty-message">
+        <p>
+          Select a term to load the available subjects, then choose one to view
+          marks.
+        </p>
+      </div>
+
       <div id="noMarksMessage" class="empty-message" style="display: none">
-        <p>No marks found for selected student and term.</p>
+        <p>No students or marks found for the selected subject.</p>
       </div>
 
       <div id="loadingMessage" class="loading-message" style="display: none">
@@ -137,6 +140,19 @@
         background: #f0f0f0;
         color: #999;
         cursor: not-allowed;
+      }
+
+      .filter-note {
+        padding: 14px 16px;
+        border-radius: 10px;
+        background: linear-gradient(
+          135deg,
+          rgba(16, 34, 61, 0.06),
+          rgba(59, 130, 246, 0.06)
+        );
+        color: #475569;
+        font-size: 0.92rem;
+        line-height: 1.5;
       }
 
       .btn-primary {
@@ -283,6 +299,15 @@
         color: #64748b;
       }
 
+      .empty-message {
+        margin-top: 18px;
+      }
+
+      .mark-empty {
+        color: #64748b;
+        font-weight: 600;
+      }
+
       @media (max-width: 768px) {
         body {
           padding: 12px;
@@ -303,6 +328,10 @@
         .filter-section {
           grid-template-columns: 1fr;
           gap: 12px;
+        }
+
+        .filter-note {
+          font-size: 0.9rem;
         }
 
         .filter-group select,
