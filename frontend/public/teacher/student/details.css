@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
   font-family:
-    Inter,
+    "Poppins",
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
@@ -53,10 +53,29 @@ body {
   opacity: 0.92;
 }
 
-.back-link {
-  color: #dbeafe;
+.page-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
   text-decoration: none;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.page-nav-link:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
 }
 
 .card {

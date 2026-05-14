@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const fileUpload = require("express-fileupload");
 const path = require("path");
 const dotenv = require("dotenv");
 const authRoutes = require("./routes/auth");
@@ -14,6 +15,9 @@ const port = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+app.use(
+  fileUpload({ createParentPath: true, limits: { fileSize: 5 * 1024 * 1024 } }),
+);
 app.use(express.static(path.join(__dirname, "..", "frontend", "public")));
 
 app.use("/api/auth", authRoutes);

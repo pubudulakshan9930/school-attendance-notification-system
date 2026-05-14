@@ -2,6 +2,7 @@ const adminTeacherForm = document.getElementById("adminTeacherForm");
 const ADMIN_TEACHER_API = "/api/admin/teachers";
 const ADMIN_CLASSES_API = "/api/admin/classes";
 const gradeSelect = adminTeacherForm.elements["grade"];
+const classStreamSelect = adminTeacherForm.elements["classStream"];
 const classSelect = adminTeacherForm.elements["classSection"];
 const submitButton = adminTeacherForm.querySelector('button[type="submit"]');
 
@@ -26,15 +27,25 @@ function setSelectOptions(selectElement, placeholder, options) {
 function updateClassOptionsByGrade() {
   const selectedGrade = Number(gradeSelect.value);
   if (!Number.isInteger(selectedGrade)) {
+    setStreamSelectState(classStreamSelect, null);
     setSelectOptions(classSelect, "Select Class", []);
+    return;
+  }
+
+  setStreamSelectState(classStreamSelect, selectedGrade);
+  const selectedStream = String(classStreamSelect.value || "").trim();
+  if (isStreamGrade(selectedGrade) && !selectedStream) {
+    setSelectOptions(classSelect, "Select Stream first", []);
     return;
   }
 
   const sections = [
     ...new Set(
-      availableClasses
-        .filter((item) => item.grade === selectedGrade)
-        .map((item) => item.section),
+      filterClassesByGradeAndStream(
+        availableClasses,
+        selectedGrade,
+        selectedStream,
+      ).map((item) => item.section),
     ),
   ].sort();
 
@@ -86,6 +97,7 @@ async function loadAvailableClasses() {
         label: `Grade ${grade}`,
       })),
     );
+    setStreamSelectState(classStreamSelect, null);
     setSelectOptions(classSelect, "Select Class", []);
 
     submitButton.disabled = grades.length === 0;
@@ -104,6 +116,9 @@ async function loadAvailableClasses() {
 }
 
 gradeSelect.addEventListener("change", updateClassOptionsByGrade);
+if (classStreamSelect) {
+  classStreamSelect.addEventListener("change", updateClassOptionsByGrade);
+}
 loadAvailableClasses();
 
 adminTeacherForm.addEventListener("submit", async (event) => {
@@ -114,6 +129,7 @@ adminTeacherForm.addEventListener("submit", async (event) => {
     full_name: formData.get("fullName").trim(),
     teacher_id: formData.get("teacherId").trim(),
     grade: Number(formData.get("grade")),
+    class_stream: formData.get("classStream").trim(),
     class_section: formData.get("classSection").trim(),
     phone: formData.get("phone").trim(),
     email: formData.get("email").trim(),

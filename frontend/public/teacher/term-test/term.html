@@ -12,29 +12,54 @@
   <body>
     <main class="term-page">
       <header class="page-header">
-        <a
-          class="back-button"
-          href="../dashboard.html"
-          aria-label="Back to Dashboard"
-          >←</a
-        >
-        <div>
-          <h3>Term Test Marks</h3>
-          <p>
-            Select a term first, then choose a student and enter their subject
-            marks.
+        <a class="page-nav-link" href="../dashboard.html">Dashboard</a>
+        <div class="header-content">
+          <h1>📚 Term Test Marks</h1>
+          <p class="header-subtitle">
+            Select a term to begin entering student marks
           </p>
         </div>
       </header>
 
-      <section class="term-select card">
-        <label for="termSelect">Select Term</label>
-        <select id="termSelect">
-          <option value="">Select Term</option>
-          <option value="1">First Term</option>
-          <option value="2">Second Term</option>
-          <option value="3">Third Term</option>
-        </select>
+      <section class="term-selector-container">
+        <div class="term-selector-card">
+          <div class="term-selector-header">
+            <h2>Choose Term</h2>
+            <p>Select which term you want to enter marks for</p>
+          </div>
+
+          <div class="term-buttons-grid">
+            <button
+              type="button"
+              class="term-button term-button-1"
+              data-term="1"
+            >
+              <span class="term-icon">I</span>
+              <span class="term-label">First Term</span>
+              <span class="term-subtitle">Jan - Apr</span>
+            </button>
+
+            <button
+              type="button"
+              class="term-button term-button-2"
+              data-term="2"
+            >
+              <span class="term-icon">II</span>
+              <span class="term-label">Second Term</span>
+              <span class="term-subtitle">May - Aug</span>
+            </button>
+
+            <button
+              type="button"
+              class="term-button term-button-3"
+              data-term="3"
+            >
+              <span class="term-icon">III</span>
+              <span class="term-label">Third Term</span>
+              <span class="term-subtitle">Sep - Dec</span>
+            </button>
+          </div>
+        </div>
       </section>
     </main>
 

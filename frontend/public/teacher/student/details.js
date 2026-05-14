@@ -1,6 +1,42 @@
+const TOKEN_KEY = "sureki_token";
+
 const loadDetailsButton = document.getElementById("loadDetailsButton");
 const classMetaList = document.getElementById("classMetaList");
 const studentsList = document.getElementById("studentsList");
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+async function apiFetch(url, options = {}) {
+  const token = getToken();
+  if (!token) {
+    throw new Error("Authentication required.");
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json")
+    ? await response.json()
+    : await response.text();
+
+  if (!response.ok) {
+    const message =
+      payload && typeof payload === "object" && payload.error
+        ? payload.error
+        : "Request failed.";
+    throw new Error(message);
+  }
+
+  return payload;
+}
 
 function formatDateYmd(value) {
   if (!value) {
@@ -16,6 +52,43 @@ function formatDateYmd(value) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}.${month}.${day}`;
+}
+
+function createEditForm(student) {
+  const form = document.createElement("form");
+  form.className = "edit-form";
+  form.noValidate = true;
+  form.innerHTML = `
+    <div class="form-field">
+      <label>Student Name *</label>
+      <input type="text" name="full_name" value="${(student.full_name || "").replace(/"/g, "&quot;")}" required />
+    </div>
+    <div class="form-field">
+      <label>Parent Name *</label>
+      <input type="text" name="parent_name" value="${(student.parent_name || "").replace(/"/g, "&quot;")}" required />
+    </div>
+    <div class="form-field">
+      <label>Parent Phone *</label>
+      <input type="tel" name="parent_phone" value="${(student.parent_phone || "").replace(/"/g, "&quot;")}" required />
+    </div>
+    <div class="form-field">
+      <label>Parent Email</label>
+      <input type="email" name="parent_email" value="${(student.parent_email || "").replace(/"/g, "&quot;")}" />
+    </div>
+    <div class="form-field">
+      <label>City</label>
+      <input type="text" name="city" value="${(student.city || "").replace(/"/g, "&quot;")}" />
+    </div>
+    <div class="form-field">
+      <label>Address</label>
+      <input type="text" name="address" value="${(student.address || "").replace(/"/g, "&quot;")}" />
+    </div>
+    <div class="form-actions">
+      <button type="button" class="save-button" data-student-id="${student.id}">Save Changes</button>
+      <button type="button" class="cancel-button">Cancel</button>
+    </div>
+  `;
+  return form;
 }
 
 function renderDetailsList(container, items, emptyMessage, formatter) {
@@ -53,8 +126,90 @@ function renderDetailsList(container, items, emptyMessage, formatter) {
       listItem.appendChild(row);
     });
 
+    // Add edit button for students
+    if (item.student_id) {
+      const editRow = document.createElement("div");
+      editRow.className = "detail-line";
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "edit-button";
+      editBtn.textContent = "Edit";
+      editBtn.dataset.studentId = item.student_id;
+      editRow.appendChild(editBtn);
+      listItem.appendChild(editRow);
+
+      // Add edit form
+      const form = createEditForm(item);
+      listItem.appendChild(form);
+
+      // Event listeners
+      editBtn.addEventListener("click", () => {
+        form.classList.add("active");
+        editBtn.style.display = "none";
+      });
+
+      const cancelBtn = form.querySelector(".cancel-button");
+      cancelBtn.addEventListener("click", () => {
+        form.classList.remove("active");
+        editBtn.style.display = "block";
+      });
+
+      const saveBtn = form.querySelector(".save-button");
+      saveBtn.addEventListener("click", async () => {
+        await handleSaveStudent(item.student_id, form, editBtn);
+      });
+    }
+
     container.appendChild(listItem);
   });
+}
+
+async function handleSaveStudent(studentId, form, editBtn) {
+  const saveBtn = form.querySelector(".save-button");
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving...";
+
+  try {
+    const formData = new FormData(form);
+    const payload = {
+      full_name: formData.get("full_name")?.trim(),
+      parent_name: formData.get("parent_name")?.trim(),
+      parent_phone: formData.get("parent_phone")?.trim(),
+      parent_email: formData.get("parent_email")?.trim() || null,
+      city: formData.get("city")?.trim() || null,
+      address: formData.get("address")?.trim() || null,
+    };
+
+    // Validate required fields
+    if (!payload.full_name || !payload.parent_name || !payload.parent_phone) {
+      alert("Student name, parent name, and parent phone are required.");
+      return;
+    }
+
+    const response = await apiFetch(`/api/teacher/students/${studentId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.success) {
+      alert("Student details updated successfully.");
+      form.classList.remove("active");
+      editBtn.style.display = "block";
+      // Reload to show updated data
+      await loadAssignedClassDetails();
+    } else {
+      alert(response.error || "Failed to update student details.");
+    }
+  } catch (error) {
+    console.error("Save student error:", error);
+    alert(error.message || "Failed to save changes.");
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save Changes";
+  }
 }
 
 async function loadAssignedClassDetails() {
@@ -64,7 +219,9 @@ async function loadAssignedClassDetails() {
     return;
   }
 
-  const originalText = loadDetailsButton ? loadDetailsButton.textContent : "Load Details";
+  const originalText = loadDetailsButton
+    ? loadDetailsButton.textContent
+    : "Load Details";
 
   try {
     if (loadDetailsButton) {
@@ -84,7 +241,12 @@ async function loadAssignedClassDetails() {
     }
 
     if (!data.class) {
-      renderDetailsList(classMetaList, [], "No active class assigned.", () => "");
+      renderDetailsList(
+        classMetaList,
+        [],
+        "No active class assigned.",
+        () => "",
+      );
       renderDetailsList(
         studentsList,
         [],
@@ -144,7 +306,69 @@ async function loadAssignedClassDetails() {
       data.students || [],
       "No students found for your assigned class.",
       (student) => {
-        const subjects = (student.subjects || []).map((subject) => subject.name);
+        const subjects = (student.subjects || []).map(
+          (subject) => subject.name,
+        );
+        return [
+          {
+            label: "Student Code",
+            value: student.student_code || "N/A",
+          },
+          {
+            label: "Student",
+            value: student.full_name,
+          },
+          {
+            label: "Parent",
+            value: student.parent_name,
+          },
+          {
+            label: "Parent Phone",
+            value: student.parent_phone || "N/A",
+          },
+          {
+            label: "Parent Email",
+            value: student.parent_email || "N/A",
+          },
+          {
+            label: "City",
+            value: student.city || "N/A",
+          },
+          {
+            label: "Address",
+            value: student.address || "N/A",
+          },
+          {
+            label: "Assigned Date",
+            value: formatDateYmd(student.assigned_at),
+          },
+          {
+            label: "Registered Date",
+            value: formatDateYmd(student.created_at),
+          },
+          {
+            label: "Subjects",
+            value: subjects.length > 0 ? subjects.join(", ") : "N/A",
+          },
+        ];
+      },
+    );
+
+    // Store student_id for edit functionality
+    const studentsWithId = (data.students || []).map((student) => ({
+      ...student,
+      student_id: student.id,
+    }));
+
+    // Re-render with edit buttons
+    renderDetailsList(
+      studentsList,
+      studentsWithId,
+      "No students found for your assigned class.",
+      (student) => {
+        const subjects = (student.subjects || []).map(
+          (subject) => subject.name,
+        );
         return [
           {
             label: "Student",
@@ -161,6 +385,14 @@ async function loadAssignedClassDetails() {
           {
             label: "Parent Email",
             value: student.parent_email || "N/A",
+          },
+          {
+            label: "City",
+            value: student.city || "N/A",
+          },
+          {
+            label: "Address",
+            value: student.address || "N/A",
           },
           {
             label: "Assigned Date",
@@ -193,3 +425,6 @@ if (loadDetailsButton) {
     loadAssignedClassDetails();
   });
 }
+
+// Auto-load student details when page loads
+loadAssignedClassDetails();

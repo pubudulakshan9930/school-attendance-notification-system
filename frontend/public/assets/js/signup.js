@@ -7,11 +7,8 @@ const toggleConfirmPassword = document.getElementById(
 );
 const SIGNUP_API_URL = "/api/auth/signup";
 const SIGNUP_CLASSES_API_URL = "/api/auth/classes";
-const gradeSelect = signupForm.elements["grade"];
-const classSelect = signupForm.elements["classSection"];
+const classSelect = signupForm.elements["classId"];
 const submitButton = signupForm.querySelector('button[type="submit"]');
-
-let availableClasses = [];
 
 function setSelectOptions(selectElement, placeholder, options) {
   selectElement.innerHTML = "";
@@ -29,35 +26,9 @@ function setSelectOptions(selectElement, placeholder, options) {
   });
 }
 
-function updateClassOptionsByGrade() {
-  const selectedGrade = Number(gradeSelect.value);
-  if (!Number.isInteger(selectedGrade)) {
-    setSelectOptions(classSelect, "Select Class", []);
-    return;
-  }
-
-  const sections = [
-    ...new Set(
-      availableClasses
-        .filter((item) => item.grade === selectedGrade)
-        .map((item) => item.section),
-    ),
-  ].sort();
-
-  setSelectOptions(
-    classSelect,
-    sections.length > 0 ? "Select Class" : "No classes available",
-    sections.map((section) => ({
-      value: section,
-      label: `Class ${section}`,
-    })),
-  );
-}
-
 async function loadAvailableClasses() {
   try {
     submitButton.disabled = true;
-    setSelectOptions(gradeSelect, "Loading grades...", []);
     setSelectOptions(classSelect, "Loading classes...", []);
 
     const response = await fetch(SIGNUP_CLASSES_API_URL);
@@ -66,33 +37,37 @@ async function loadAvailableClasses() {
       throw new Error(data.error || "Unable to load class list.");
     }
 
-    availableClasses = (data.classes || []).filter(
+    const availableClasses = (data.classes || []).filter(
       (item) => item.teacher_id === null,
     );
-    const grades = [
-      ...new Set(availableClasses.map((item) => item.grade)),
-    ].sort((a, b) => a - b);
+
+    const classOptions = availableClasses.map((cls) => {
+      let label = `Grade ${cls.grade} - Class ${cls.section}`;
+      if (cls.stream) {
+        const streamLabel = getStreamLabel(cls.stream);
+        if (streamLabel) label += ` - ${streamLabel}`;
+      }
+      return {
+        value: cls.id,
+        label: label,
+      };
+    });
 
     setSelectOptions(
-      gradeSelect,
-      grades.length > 0 ? "Select Grade" : "No grades available",
-      grades.map((grade) => ({
-        value: String(grade),
-        label: `Grade ${grade}`,
-      })),
+      classSelect,
+      classOptions.length > 0 ? "Select Class" : "No classes available",
+      classOptions,
     );
-    setSelectOptions(classSelect, "Select Class", []);
 
-    submitButton.disabled = grades.length === 0;
-    if (grades.length === 0) {
+    submitButton.disabled = classOptions.length === 0;
+    if (classOptions.length === 0) {
       alert("No classes are available for signup. Please contact admin.");
     }
   } catch (error) {
-    console.error("Load classes failed:", error);
-    alert(error.message || "Failed to load classes.");
-    setSelectOptions(gradeSelect, "Select Grade", []);
-    setSelectOptions(classSelect, "Select Class", []);
+    console.error("Load classes error:", error);
+    setSelectOptions(classSelect, "Error loading classes", []);
     submitButton.disabled = true;
+    alert("Failed to load available classes. Please try again.");
   }
 }
 
@@ -113,23 +88,27 @@ toggleConfirmPassword.addEventListener("click", () =>
   toggleVisibility(confirmPasswordInput, toggleConfirmPassword),
 );
 
-gradeSelect.addEventListener("change", updateClassOptionsByGrade);
 loadAvailableClasses();
 
 signupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const formData = new FormData(signupForm);
+  const getTrimmed = (name) => String(formData.get(name) || "").trim();
   const payload = {
-    full_name: formData.get("fullName").trim(),
-    teacher_code: formData.get("teacherId").trim(),
-    grade: Number(formData.get("grade")),
-    class_section: formData.get("classSection").trim(),
-    phone: formData.get("phone").trim(),
-    email: formData.get("email").trim(),
-    password: formData.get("password").trim(),
-    confirm_password: formData.get("confirmPassword").trim(),
+    full_name: getTrimmed("fullName"),
+    teacher_code: getTrimmed("teacherId"),
+    class_id: getTrimmed("classId"),
+    phone: getTrimmed("phone"),
+    email: getTrimmed("email"),
+    password: getTrimmed("password"),
+    confirm_password: getTrimmed("confirmPassword"),
   };
+
+  if (!payload.class_id) {
+    alert("Please select a class.");
+    return;
+  }
 
   try {
     const response = await fetch(SIGNUP_API_URL, {

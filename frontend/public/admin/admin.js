@@ -6,13 +6,17 @@ const TERM_REPORT_API = "/api/admin/reports/term-tests";
 const ATTENDANCE_REPORT_FILTERED_API = "/api/admin/reports/attendance/filtered";
 const TERM_REPORT_FILTERED_API = "/api/admin/reports/term-tests/filtered";
 const EMERGENCY_ALERT_API = "/api/admin/alerts/emergency";
+const SUBJECT_PLANS_API = "/api/admin/subject-plans";
 
 const adminClassForm = document.getElementById("adminClassForm");
 const adminTeacherForm = document.getElementById("adminTeacherForm");
 const emergencyAlertForm = document.getElementById("emergencyAlertForm");
 const adminClassesList = document.getElementById("adminClassesList");
 const teacherSummary = document.getElementById("teacherSummary");
+const studentCount = document.getElementById("studentCount");
 const teacherCount = document.getElementById("teacherCount");
+const presentCount = document.getElementById("presentCount");
+const presentRate = document.getElementById("presentRate");
 const classCount = document.getElementById("classCount");
 const absentTeacherCount = document.getElementById("absentTeacherCount");
 const alertRecipientList = document.getElementById("alertRecipientList");
@@ -21,6 +25,7 @@ const classDetailsFilterForm = document.getElementById(
 );
 const classDetailsYear = document.getElementById("classDetailsYear");
 const classDetailsGrade = document.getElementById("classDetailsGrade");
+const classDetailsStream = document.getElementById("classDetailsStream");
 const classDetailsSection = document.getElementById("classDetailsSection");
 const classTeacherDetails = document.getElementById("classTeacherDetails");
 const classStudentsDetails = document.getElementById("classStudentsDetails");
@@ -28,8 +33,10 @@ const attendanceReportSummary = document.getElementById(
   "attendanceReportSummary",
 );
 const attendanceReportList = document.getElementById("attendanceReportList");
+const attendanceStream = document.getElementById("attendanceStream");
 const termReportSummary = document.getElementById("termReportSummary");
 const termReportList = document.getElementById("termReportList");
+const termStream = document.getElementById("termStream");
 const loadAttendanceReportButton = document.getElementById(
   "loadAttendanceReport",
 );
@@ -38,6 +45,8 @@ const downloadAttendanceReportButton = document.getElementById(
   "downloadAttendanceReport",
 );
 const downloadTermReportButton = document.getElementById("downloadTermReport");
+const loadSubjectPlansButton = document.getElementById("loadSubjectPlans");
+const subjectPlansBoard = document.getElementById("subjectPlansBoard");
 const sidebarGreeting = document.getElementById("sidebarGreeting");
 const tabButtons = Array.from(document.querySelectorAll(".admin-tab"));
 const panels = Array.from(document.querySelectorAll(".admin-panel"));
@@ -188,8 +197,36 @@ function renderDetailedList(container, items, emptyMessage, formatter) {
   });
 }
 
-function updateReportClassOptions(gradeSelectId, classSelectId, classesData) {
+async function removeClass(classId, classLabel) {
+  const confirmed = window.confirm(
+    `Remove ${classLabel}? This will delete the class and its attendance and term-test records.`,
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  await apiFetch(`${ADMIN_CLASSES_API}/${encodeURIComponent(classId)}`, {
+    method: "DELETE",
+  });
+
+  await Promise.all([
+    loadClasses(),
+    loadTeachers(),
+    typeof loadAvailableClasses === "function"
+      ? loadAvailableClasses()
+      : Promise.resolve(),
+  ]);
+}
+
+function updateReportClassOptions(
+  gradeSelectId,
+  streamSelectId,
+  classSelectId,
+  classesData,
+) {
   const gradeSelect = document.getElementById(gradeSelectId);
+  const streamSelect = document.getElementById(streamSelectId);
   const classSelect = document.getElementById(classSelectId);
 
   if (!gradeSelect || !classSelect) return;
@@ -209,17 +246,37 @@ function updateReportClassOptions(gradeSelectId, classSelectId, classesData) {
 
   setSelectOptions(classSelect, "Select Class", []);
 
+  if (streamSelect) {
+    setStreamSelectState(streamSelect, null);
+  }
+
   gradeSelect.addEventListener("change", () => {
     const selectedGrade = Number(gradeSelect.value);
     if (!Number.isInteger(selectedGrade)) {
+      if (streamSelect) {
+        setStreamSelectState(streamSelect, null);
+      }
       setSelectOptions(classSelect, "Select Class", []);
       return;
     }
+
+    if (streamSelect) {
+      setStreamSelectState(streamSelect, selectedGrade);
+    }
+
+    const selectedStream = streamSelect ? streamSelect.value : "";
+    if (isStreamGrade(selectedGrade) && !selectedStream) {
+      setSelectOptions(classSelect, "Select Stream first", []);
+      return;
+    }
+
     const sections = [
       ...new Set(
-        classesData
-          .filter((item) => item.grade === selectedGrade)
-          .map((item) => item.section),
+        filterClassesByGradeAndStream(
+          classesData,
+          selectedGrade,
+          selectedStream,
+        ).map((item) => item.section),
       ),
     ].sort();
 
@@ -232,6 +289,41 @@ function updateReportClassOptions(gradeSelectId, classSelectId, classesData) {
       })),
     );
   });
+
+  if (streamSelect) {
+    streamSelect.addEventListener("change", () => {
+      const selectedGrade = Number(gradeSelect.value);
+      if (!Number.isInteger(selectedGrade)) {
+        setSelectOptions(classSelect, "Select Class", []);
+        return;
+      }
+
+      const selectedStream = streamSelect.value;
+      if (isStreamGrade(selectedGrade) && !selectedStream) {
+        setSelectOptions(classSelect, "Select Stream first", []);
+        return;
+      }
+
+      const sections = [
+        ...new Set(
+          filterClassesByGradeAndStream(
+            classesData,
+            selectedGrade,
+            selectedStream,
+          ).map((item) => item.section),
+        ),
+      ].sort();
+
+      setSelectOptions(
+        classSelect,
+        sections.length > 0 ? "Select Class" : "No classes available",
+        sections.map((section) => ({
+          value: section,
+          label: `Class ${section}`,
+        })),
+      );
+    });
+  }
 }
 
 function downloadCsv(filename, data) {
@@ -252,7 +344,7 @@ function buildAttendanceCsv(records) {
     const row = [
       record.student_name,
       record.status,
-      `Grade ${record.grade} ${record.section}`,
+      formatClassLabel(record),
       record.attendance_date,
       record.teacher_name,
       record.student_code || "",
@@ -272,7 +364,7 @@ function buildTermTestCsv(records) {
       record.subject_name,
       record.term,
       record.mark,
-      `Grade ${record.grade} ${record.section}`,
+      formatClassLabel(record),
       record.exam_date,
     ];
     csv +=
@@ -298,7 +390,7 @@ function updateSidebarGreetingByTime() {
   }
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning, Admin" : "Good evening, Admin";
+  const greeting = hour < 12 ? "Good morning" : "Good evening";
   sidebarGreeting.textContent = greeting;
 }
 
@@ -383,6 +475,476 @@ function renderList(container, items, emptyMessage, formatter) {
   });
 }
 
+function formatSubjectGroups(groups) {
+  if (!groups || groups.length === 0) {
+    return "None";
+  }
+
+  return groups
+    .map((group) => `${group.label}: ${group.options.join(", ")}`)
+    .join(" | ");
+}
+
+function renderSubjectPlans(plans) {
+  if (!subjectPlansBoard) {
+    return;
+  }
+
+  subjectPlansBoard.innerHTML = "";
+
+  if (!plans || plans.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "panel-card";
+    empty.textContent = "No subject plans available.";
+    subjectPlansBoard.appendChild(empty);
+    return;
+  }
+
+  plans.forEach((plan) => {
+    const card = document.createElement("article");
+    card.className = "panel-card subject-plan-card subject-plan-card-edit";
+    card.style.border = "1px solid #d4dce6";
+    card.style.padding = "1rem";
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.height = "100%";
+    card.style.backgroundColor = "#ffffff";
+    card.style.borderRadius = "8px";
+    card.dataset.isEditing = "false";
+
+    // Grade/Title at TOP
+    const title = document.createElement("h3");
+    title.textContent = plan.stream_label
+      ? `Grade ${plan.grade} - ${plan.stream_label}`
+      : `Grade ${plan.grade}`;
+    title.style.textAlign = "center";
+    title.style.marginBottom = "0.85rem";
+    title.style.marginTop = "0";
+    title.style.color = "#10223d";
+    title.style.fontSize = "1.15rem";
+    title.style.fontWeight = "700";
+
+    // Store field data for toggling modes
+    const fieldsData = {
+      fixed_subjects: (plan.fixed_subjects || "").join
+        ? plan.fixed_subjects.join(", ")
+        : plan.fixed_subjects || "",
+      elective_category_1_options: plan.elective_category_1_options || "",
+      elective_category_2_options: plan.elective_category_2_options || "",
+      elective_category_3_options: plan.elective_category_3_options || "",
+    };
+
+    // Create input fields (hidden by default)
+    const inputs = {};
+    const createInputField = (key, label, placeholder) => {
+      const labelEl = document.createElement("label");
+      labelEl.style.display = "block";
+      labelEl.style.marginBottom = "0.25rem";
+      labelEl.style.fontSize = "0.8rem";
+      labelEl.style.color = "#5a6c7d";
+      labelEl.style.fontWeight = "600";
+      labelEl.innerHTML = `${label}:`;
+
+      const textarea = document.createElement("textarea");
+      textarea.className = "admin-input";
+      textarea.value = fieldsData[key];
+      textarea.placeholder = placeholder;
+      textarea.style.width = "100%";
+      textarea.style.marginBottom = "0.6rem";
+      textarea.style.fontSize = "0.75rem";
+      textarea.style.padding = "0.4rem 0.6rem";
+      textarea.style.border = "1px solid #d4dce6";
+      textarea.style.borderRadius = "4px";
+      textarea.style.minHeight = "45px";
+      textarea.style.fontFamily = "inherit";
+      textarea.style.resize = "vertical";
+      textarea.dataset.field = key;
+      textarea.disabled = true;
+
+      inputs[key] = { labelEl, textarea };
+      return { labelEl, textarea };
+    };
+
+    // Create all input fields
+    createInputField(
+      "fixed_subjects",
+      "Mandatory Subjects",
+      "e.g., Mathematics, Environment, English",
+    );
+    createInputField(
+      "elective_category_1_options",
+      "Elective Category 1 (Leave empty to remove)",
+      "e.g., ICT, Health and Physical Education",
+    );
+    createInputField(
+      "elective_category_2_options",
+      "Elective Category 2 (Leave empty to remove)",
+      "e.g., Music, Arts, Dancing",
+    );
+    createInputField(
+      "elective_category_3_options",
+      "Elective Category 3 (Leave empty to remove)",
+      "e.g., Geography, Tamil, Human Studies",
+    );
+
+    // Add title to top
+    card.appendChild(title);
+
+    // Create DISPLAY section function (organized)
+    const createDisplaySection = () => {
+      const section = document.createElement("div");
+
+      const mandatoryHeading = document.createElement("h4");
+      mandatoryHeading.textContent = "📚 Mandatory Subjects";
+      mandatoryHeading.style.fontSize = "0.75rem";
+      mandatoryHeading.style.color = "#10223d";
+      mandatoryHeading.style.marginBottom = "0.15rem";
+      mandatoryHeading.style.marginTop = "0.25rem";
+      mandatoryHeading.style.fontWeight = "700";
+      section.appendChild(mandatoryHeading);
+
+      const fixedLabel = document.createElement("p");
+      fixedLabel.style.margin = "0 0 0.15rem 0";
+      fixedLabel.style.fontSize = "0.7rem";
+      fixedLabel.style.color = "#666";
+      fixedLabel.innerHTML = "<strong>Fixed:</strong>";
+      section.appendChild(fixedLabel);
+
+      const fixedValue = document.createElement("p");
+      fixedValue.style.margin = "0 0 0.4rem 0";
+      fixedValue.style.fontSize = "0.7rem";
+      fixedValue.style.color = "#2d3e50";
+      fixedValue.style.lineHeight = "1.3";
+      fixedValue.textContent = fieldsData.fixed_subjects || "(Not set)";
+      section.appendChild(fixedValue);
+
+      // Electives
+      const electiveHeading = document.createElement("h4");
+      electiveHeading.textContent = "✨ Electives";
+      electiveHeading.style.fontSize = "0.75rem";
+      electiveHeading.style.color = "#10223d";
+      electiveHeading.style.marginBottom = "0.15rem";
+      electiveHeading.style.marginTop = "0.25rem";
+      electiveHeading.style.fontWeight = "700";
+      section.appendChild(electiveHeading);
+
+      let hasElectives = false;
+      for (let i = 1; i <= 3; i++) {
+        const key = `elective_category_${i}_options`;
+        const val = fieldsData[key];
+        if (val) {
+          const categoryContainer = document.createElement("div");
+          categoryContainer.style.display = "flex";
+          categoryContainer.style.justifyContent = "space-between";
+          categoryContainer.style.alignItems = "flex-start";
+          categoryContainer.style.marginBottom = "0.1rem";
+
+          const categoryText = document.createElement("span");
+          categoryText.style.fontSize = "0.7rem";
+          categoryText.style.color = "#2d3e50";
+          categoryText.innerHTML = `<strong>C${i}:</strong> ${val}`;
+          categoryContainer.appendChild(categoryText);
+
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.textContent = "✕";
+          removeBtn.style.padding = "0px 4px";
+          removeBtn.style.fontSize = "0.65rem";
+          removeBtn.style.color = "#d32f2f";
+          removeBtn.style.backgroundColor = "transparent";
+          removeBtn.style.border = "none";
+          removeBtn.style.cursor = "pointer";
+          removeBtn.style.fontWeight = "bold";
+          removeBtn.title = `Remove Category ${i}`;
+          removeBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            if (confirm(`Remove Category ${i} from Grade ${plan.grade}?`)) {
+              inputs[key].textarea.value = "";
+              await saveSubjectPlan(plan.grade, plan.stream || "", {
+                fixed_subjects: inputs.fixed_subjects.textarea.value.trim(),
+                elective_category_1_options:
+                  key === "elective_category_1_options"
+                    ? ""
+                    : inputs.elective_category_1_options.textarea.value.trim(),
+                elective_category_2_options:
+                  key === "elective_category_2_options"
+                    ? ""
+                    : inputs.elective_category_2_options.textarea.value.trim(),
+                elective_category_3_options:
+                  key === "elective_category_3_options"
+                    ? ""
+                    : inputs.elective_category_3_options.textarea.value.trim(),
+              });
+              toggleEditMode(false);
+            }
+          });
+          categoryContainer.appendChild(removeBtn);
+
+          section.appendChild(categoryContainer);
+          hasElectives = true;
+        }
+      }
+      if (!hasElectives) {
+        const noElec = document.createElement("p");
+        noElec.style.margin = "0 0 0.4rem 0";
+        noElec.style.fontSize = "0.7rem";
+        noElec.style.color = "#999";
+        noElec.style.fontStyle = "italic";
+        noElec.textContent = "(No electives)";
+        section.appendChild(noElec);
+      }
+
+      return section;
+    };
+
+    // Create middle content section (grows to fill space)
+    const contentDiv = document.createElement("div");
+    contentDiv.style.flex = "1";
+    contentDiv.style.overflowY = "auto";
+    contentDiv.style.maxHeight = "180px";
+    contentDiv.style.paddingRight = "0.25rem";
+
+    // Add organized display section
+    const displaySection = createDisplaySection();
+    contentDiv.appendChild(displaySection);
+
+    // Create edit mode inputs container (hidden initially)
+    const editInputsDiv = document.createElement("div");
+    editInputsDiv.style.display = "none";
+
+    // Add enhanced category management UI in edit mode
+    const categoryActionsContainer = document.createElement("div");
+    categoryActionsContainer.style.display = "none";
+    categoryActionsContainer.style.marginTop = "0.5rem";
+    categoryActionsContainer.style.paddingTop = "0.5rem";
+    categoryActionsContainer.style.borderTop = "1px solid #e0e0e0";
+    categoryActionsContainer.style.display = "none"; // Will be shown in edit mode
+
+    const createCategoryBtn = document.createElement("button");
+    createCategoryBtn.type = "button";
+    createCategoryBtn.textContent = "➕ Add Empty Category";
+    createCategoryBtn.style.width = "100%";
+    createCategoryBtn.style.padding = "0.4rem 0.6rem";
+    createCategoryBtn.style.fontSize = "0.8rem";
+    createCategoryBtn.style.fontWeight = "500";
+    createCategoryBtn.style.color = "#10223d";
+    createCategoryBtn.style.backgroundColor = "#e8f0f7";
+    createCategoryBtn.style.border = "1px solid #b3d4e8";
+    createCategoryBtn.style.borderRadius = "4px";
+    createCategoryBtn.style.cursor = "pointer";
+    createCategoryBtn.style.marginBottom = "0.4rem";
+    createCategoryBtn.addEventListener("click", () => {
+      // Find first empty category and focus on it
+      for (let i = 1; i <= 3; i++) {
+        const key = `elective_category_${i}_options`;
+        const textarea = inputs[key]?.textarea;
+        if (textarea && !textarea.value.trim()) {
+          textarea.focus();
+          textarea.style.border = "2px solid #10223d";
+          setTimeout(() => {
+            textarea.style.border = "1px solid #d4dce6";
+          }, 2000);
+          break;
+        }
+      }
+    });
+    categoryActionsContainer.appendChild(createCategoryBtn);
+    editInputsDiv.appendChild(categoryActionsContainer);
+
+    Object.values(inputs).forEach(({ labelEl, textarea }) => {
+      editInputsDiv.appendChild(labelEl);
+      editInputsDiv.appendChild(textarea);
+
+      // Add clear button for each textarea
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.textContent = "✕ Clear";
+      clearBtn.style.width = "100%";
+      clearBtn.style.padding = "0.3rem 0.5rem";
+      clearBtn.style.fontSize = "0.75rem";
+      clearBtn.style.color = "#d32f2f";
+      clearBtn.style.backgroundColor = "#ffebee";
+      clearBtn.style.border = "1px solid #ffcdd2";
+      clearBtn.style.borderRadius = "3px";
+      clearBtn.style.cursor = "pointer";
+      clearBtn.style.marginBottom = "0.5rem";
+      clearBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        textarea.value = "";
+        textarea.style.backgroundColor = "#fff9e6";
+        setTimeout(() => {
+          textarea.style.backgroundColor = "white";
+        }, 300);
+      });
+      editInputsDiv.appendChild(clearBtn);
+    });
+    contentDiv.appendChild(editInputsDiv);
+
+    card.appendChild(contentDiv);
+
+    // Create button container at BOTTOM with full-width edit button
+    const bottomDiv = document.createElement("div");
+    bottomDiv.style.marginTop = "auto";
+    bottomDiv.style.paddingTop = "0.75rem";
+    bottomDiv.style.display = "flex";
+    bottomDiv.style.flexDirection = "column";
+    bottomDiv.style.gap = "0.75rem";
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.textContent = "✏️ Edit";
+    editBtn.style.width = "100%";
+    editBtn.style.padding = "0.58rem 0.8rem";
+    editBtn.style.fontSize = "0.95rem";
+    editBtn.style.fontWeight = "600";
+    editBtn.style.color = "white";
+    editBtn.style.backgroundColor = "#10223d";
+    editBtn.style.border = "none";
+    editBtn.style.borderRadius = "6px";
+    editBtn.style.cursor = "pointer";
+    editBtn.style.transition = "background-color 0.2s";
+    editBtn.addEventListener("mouseover", () => {
+      editBtn.style.backgroundColor = "#0a1620";
+    });
+    editBtn.addEventListener("mouseout", () => {
+      editBtn.style.backgroundColor = "#10223d";
+    });
+
+    bottomDiv.appendChild(editBtn);
+    card.appendChild(bottomDiv);
+
+    // Create save/cancel button container (hidden initially)
+    const buttonContainer = document.createElement("div");
+    buttonContainer.style.display = "none";
+    buttonContainer.style.marginTop = "auto";
+    buttonContainer.style.paddingTop = "0.75rem";
+    buttonContainer.style.flexDirection = "column";
+    buttonContainer.style.gap = "0.75rem";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.textContent = "Save";
+    saveBtn.style.width = "100%";
+    saveBtn.style.padding = "0.58rem 0.8rem";
+    saveBtn.style.fontSize = "0.95rem";
+    saveBtn.style.fontWeight = "600";
+    saveBtn.style.color = "white";
+    saveBtn.style.backgroundColor = "#10223d";
+    saveBtn.style.border = "none";
+    saveBtn.style.borderRadius = "6px";
+    saveBtn.style.cursor = "pointer";
+    saveBtn.addEventListener("mouseover", () => {
+      saveBtn.style.backgroundColor = "#0a1620";
+    });
+    saveBtn.addEventListener("mouseout", () => {
+      saveBtn.style.backgroundColor = "#10223d";
+    });
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.style.width = "100%";
+    cancelBtn.style.padding = "0.58rem 0.8rem";
+    cancelBtn.style.fontSize = "0.95rem";
+    cancelBtn.style.fontWeight = "600";
+    cancelBtn.style.color = "#333";
+    cancelBtn.style.backgroundColor = "#f0f0f0";
+    cancelBtn.style.border = "1px solid #ddd";
+    cancelBtn.style.borderRadius = "6px";
+    cancelBtn.style.cursor = "pointer";
+    cancelBtn.addEventListener("mouseover", () => {
+      cancelBtn.style.backgroundColor = "#e0e0e0";
+    });
+    cancelBtn.addEventListener("mouseout", () => {
+      cancelBtn.style.backgroundColor = "#f0f0f0";
+    });
+
+    buttonContainer.appendChild(saveBtn);
+    buttonContainer.appendChild(cancelBtn);
+    card.appendChild(buttonContainer);
+
+    // Function to toggle edit mode
+    const toggleEditMode = (isEditing) => {
+      card.dataset.isEditing = isEditing ? "true" : "false";
+
+      // Toggle display section visibility
+      displaySection.style.display = isEditing ? "none" : "block";
+
+      // Toggle input fields visibility
+      editInputsDiv.style.display = isEditing ? "block" : "none";
+
+      // Show category actions in edit mode
+      if (categoryActionsContainer) {
+        categoryActionsContainer.style.display = isEditing ? "block" : "none";
+      }
+
+      // Toggle input field disabled state
+      Object.values(inputs).forEach(({ textarea }) => {
+        textarea.disabled = !isEditing;
+      });
+
+      // Toggle buttons
+      bottomDiv.style.display = isEditing ? "none" : "flex";
+      buttonContainer.style.display = isEditing ? "flex" : "none";
+    };
+
+    // Edit button handler
+    editBtn.addEventListener("click", () => {
+      toggleEditMode(true);
+    });
+
+    // Cancel button handler
+    cancelBtn.addEventListener("click", () => {
+      // Reset inputs to original values
+      Object.entries(fieldsData).forEach(([key, value]) => {
+        if (inputs[key]) {
+          inputs[key].textarea.value = value;
+        }
+      });
+      toggleEditMode(false);
+    });
+
+    // Save button handler
+    saveBtn.addEventListener("click", async () => {
+      const updatedData = {};
+      Object.keys(inputs).forEach((key) => {
+        updatedData[key] = inputs[key].textarea.value.trim();
+      });
+
+      await saveSubjectPlan(plan.grade, plan.stream || "", updatedData);
+      toggleEditMode(false);
+    });
+
+    subjectPlansBoard.appendChild(card);
+  });
+}
+
+async function saveSubjectPlan(grade, stream, planData) {
+  try {
+    const response = await apiFetch(SUBJECT_PLANS_API, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        grade,
+        stream,
+        plan: planData,
+      }),
+    });
+
+    if (response.success) {
+      alert("Subject plan saved successfully!");
+      await loadSubjectPlans();
+    } else {
+      alert(`Failed to save: ${response.error || response.message}`);
+    }
+  } catch (error) {
+    console.error("Error saving subject plan:", error);
+    alert(`Error: ${error.message}`);
+  }
+}
+
 function setClassDetailsGradeOptions(selectedYear) {
   if (!classDetailsGrade || !classDetailsSection) {
     return;
@@ -390,6 +952,9 @@ function setClassDetailsGradeOptions(selectedYear) {
 
   if (!selectedYear) {
     setSelectOptions(classDetailsGrade, "Select Grade", []);
+    if (classDetailsStream) {
+      setStreamSelectState(classDetailsStream, null);
+    }
     setSelectOptions(classDetailsSection, "Select Class", []);
     return;
   }
@@ -410,7 +975,18 @@ function setClassDetailsGradeOptions(selectedYear) {
       label: `Grade ${grade}`,
     })),
   );
+  if (classDetailsStream) {
+    setStreamSelectState(classDetailsStream, null);
+  }
   setSelectOptions(classDetailsSection, "Select Class", []);
+}
+
+function setClassDetailsStreamOptions(selectedGrade) {
+  if (!classDetailsStream) {
+    return;
+  }
+
+  setStreamSelectState(classDetailsStream, selectedGrade);
 }
 
 function setClassDetailsSectionOptions(selectedYear, selectedGrade) {
@@ -418,20 +994,27 @@ function setClassDetailsSectionOptions(selectedYear, selectedGrade) {
     return;
   }
 
+  const selectedStream = classDetailsStream ? classDetailsStream.value : "";
+
   if (!selectedYear || !selectedGrade) {
     setSelectOptions(classDetailsSection, "Select Class", []);
     return;
   }
 
+  if (isStreamGrade(selectedGrade) && !selectedStream) {
+    setSelectOptions(classDetailsSection, "Select Stream first", []);
+    return;
+  }
+
   const sections = [
     ...new Set(
-      availableClassesForClassDetails
-        .filter(
-          (item) =>
-            Number(item.academic_year) === Number(selectedYear) &&
-            Number(item.grade) === Number(selectedGrade),
-        )
-        .map((item) => item.section),
+      filterClassesByGradeAndStream(
+        availableClassesForClassDetails.filter(
+          (item) => Number(item.academic_year) === Number(selectedYear),
+        ),
+        selectedGrade,
+        selectedStream,
+      ).map((item) => item.section),
     ),
   ].sort();
 
@@ -469,17 +1052,30 @@ async function initializeClassDetailsFilters() {
   );
   setSelectOptions(classDetailsGrade, "Select Grade", []);
   setSelectOptions(classDetailsSection, "Select Class", []);
+  if (classDetailsStream) {
+    setStreamSelectState(classDetailsStream, null);
+  }
 
   classDetailsYear.addEventListener("change", () => {
     setClassDetailsGradeOptions(classDetailsYear.value);
   });
 
   classDetailsGrade.addEventListener("change", () => {
+    setClassDetailsStreamOptions(classDetailsGrade.value);
     setClassDetailsSectionOptions(
       classDetailsYear.value,
       classDetailsGrade.value,
     );
   });
+
+  if (classDetailsStream) {
+    classDetailsStream.addEventListener("change", () => {
+      setClassDetailsSectionOptions(
+        classDetailsYear.value,
+        classDetailsGrade.value,
+      );
+    });
+  }
 }
 
 async function loadSelectedClassDetails() {
@@ -495,15 +1091,22 @@ async function loadSelectedClassDetails() {
 
   const year = classDetailsYear.value;
   const grade = classDetailsGrade.value;
+  const stream = classDetailsStream ? classDetailsStream.value : "";
   const section = classDetailsSection.value;
+  const numericGrade = Number(grade);
+  const requiresSection = !isStreamGrade(numericGrade);
 
-  if (!year || !grade || !section) {
-    alert("Please select year, grade, and class.");
+  if (!year || !grade || (requiresSection && !section)) {
+    alert(
+      requiresSection
+        ? "Please select year, grade, and class."
+        : "Please select year, grade, and stream.",
+    );
     return;
   }
 
   const data = await apiFetch(
-    `${ADMIN_CLASS_DETAILS_API}?year=${encodeURIComponent(year)}&grade=${encodeURIComponent(grade)}&class=${encodeURIComponent(section)}`,
+    `${ADMIN_CLASS_DETAILS_API}?year=${encodeURIComponent(year)}&grade=${encodeURIComponent(grade)}&class=${encodeURIComponent(section)}&stream=${encodeURIComponent(stream)}`,
   );
 
   renderDetailedList(
@@ -515,7 +1118,7 @@ async function loadSelectedClassDetails() {
         return [
           {
             label: "Class",
-            value: `Grade ${classInfo.grade} Class ${classInfo.section} (${classInfo.academic_year})`,
+            value: `${formatClassLabel(classInfo)} (${classInfo.academic_year})`,
           },
           {
             label: "Teacher",
@@ -527,7 +1130,7 @@ async function loadSelectedClassDetails() {
       return [
         {
           label: "Class",
-          value: `Grade ${classInfo.grade} Class ${classInfo.section} (${classInfo.academic_year})`,
+          value: `${formatClassLabel(classInfo)} (${classInfo.academic_year})`,
         },
         {
           label: "Teacher",
@@ -586,6 +1189,40 @@ async function loadTeachers() {
   renderTeacherSummary(teacherCache, Number(data.absent_count || 0));
 }
 
+async function loadDashboardMetrics() {
+  try {
+    const data = await apiFetch("/api/admin/dashboard");
+    console.log("Dashboard metrics response:", data);
+    const metrics = data.data || {};
+    console.log("Extracted metrics:", metrics);
+
+    const attendanceRate = Number(metrics.today_attendance_rate || 0);
+    const attendanceRateLabel = `${attendanceRate.toFixed(1)}%`;
+
+    if (studentCount) {
+      const count = Number(metrics.total_students || 0);
+      console.log("Setting student count to:", count);
+      studentCount.textContent = String(count);
+    } else {
+      console.warn("studentCount element not found");
+    }
+
+    if (teacherCount) {
+      teacherCount.textContent = String(metrics.total_teachers || 0);
+    }
+
+    if (presentCount) {
+      presentCount.textContent = String(metrics.present_count_today || 0);
+    }
+
+    if (presentRate) {
+      presentRate.textContent = `Attendance rate: ${attendanceRateLabel}`;
+    }
+  } catch (error) {
+    console.error("Failed to load dashboard metrics:", error);
+  }
+}
+
 async function loadClasses() {
   if (!adminClassesList) {
     return;
@@ -598,15 +1235,79 @@ async function loadClasses() {
     classCount.textContent = String(classes.length);
   }
 
-  renderList(
-    adminClassesList,
-    classes,
-    "No classes created yet.",
-    (classItem) => {
-      const assignedTeacher = classItem.teacher_name || "Not assigned";
-      return `Grade ${classItem.grade} Class ${classItem.section} (${classItem.academic_year}) - ${assignedTeacher}`;
-    },
-  );
+  adminClassesList.innerHTML = "";
+  if (classes.length === 0) {
+    const emptyItem = document.createElement("li");
+    emptyItem.textContent = "No classes created yet.";
+    adminClassesList.appendChild(emptyItem);
+    return;
+  }
+
+  classes.forEach((classItem) => {
+    const isTaken = Boolean(classItem.teacher_id);
+    const classLabel = `Grade ${classItem.grade} ${formatClassLabel(classItem)} (${classItem.academic_year})`;
+
+    const listItem = document.createElement("li");
+    listItem.className = `class-status-item ${isTaken ? "class-taken" : "class-open"}`;
+
+    const header = document.createElement("div");
+    header.className = "class-status-header";
+
+    const title = document.createElement("strong");
+    title.className = "class-status-title";
+    title.textContent = classLabel;
+
+    const badge = document.createElement("span");
+    badge.className = `class-status-badge ${isTaken ? "class-status-badge-taken" : "class-status-badge-open"}`;
+    badge.textContent = isTaken ? "Taken" : "Not Taken";
+
+    header.appendChild(title);
+    header.appendChild(badge);
+
+    const meta = document.createElement("div");
+    meta.className = "class-status-meta";
+    const studentCount = classItem.student_count || 0;
+    meta.textContent = `Students: ${studentCount}/${classItem.max_students || 40} | Teacher: ${classItem.teacher_name || "Not assigned"}`;
+
+    const actions = document.createElement("div");
+    actions.className = "class-status-actions";
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "class-remove-button";
+    removeButton.dataset.classId = classItem.id;
+    removeButton.dataset.classLabel = classLabel;
+    removeButton.textContent = "Remove class";
+
+    actions.appendChild(removeButton);
+
+    listItem.appendChild(header);
+    listItem.appendChild(meta);
+    listItem.appendChild(actions);
+    adminClassesList.appendChild(listItem);
+  });
+}
+
+if (adminClassesList) {
+  adminClassesList.addEventListener("click", async (event) => {
+    const removeButton = event.target.closest("button[data-class-id]");
+    if (!removeButton || !adminClassesList.contains(removeButton)) {
+      return;
+    }
+
+    try {
+      removeButton.disabled = true;
+      await removeClass(
+        removeButton.dataset.classId,
+        removeButton.dataset.classLabel || "this class",
+      );
+    } catch (error) {
+      console.error("Delete class failed:", error);
+      alert(error.message || "Failed to remove class.");
+    } finally {
+      removeButton.disabled = false;
+    }
+  });
 }
 
 async function loadAttendanceReport() {
@@ -625,7 +1326,7 @@ async function loadAttendanceReport() {
     data.recent_records || [],
     "No attendance records found.",
     (record) => {
-      return `${record.student_name} - ${record.status} - Grade ${record.grade} ${record.section} by ${record.teacher_name}`;
+      return `${record.student_name} - ${record.status} - ${formatClassLabel(record)} by ${record.teacher_name}`;
     },
   );
 }
@@ -650,7 +1351,14 @@ async function loadTermReport() {
   );
 }
 
+async function loadSubjectPlans() {
+  const data = await apiFetch(SUBJECT_PLANS_API);
+  renderSubjectPlans(data.data || []);
+}
+
 if (adminClassForm) {
+  const gradeInput = adminClassForm.elements["grade"];
+  const streamInput = adminClassForm.elements["stream"];
   const academicYearInput = adminClassForm.elements["academicYear"];
   academicYearInput.value = String(new Date().getFullYear());
 
@@ -658,6 +1366,35 @@ if (adminClassForm) {
   sectionInput.addEventListener("input", () => {
     sectionInput.value = sectionInput.value.toUpperCase().slice(0, 1);
   });
+
+  const syncStreamField = () => {
+    if (streamInput) {
+      setStreamSelectState(streamInput, gradeInput.value);
+    }
+  };
+
+  // Toggle section visibility/requirement for stream-only grades (12 & 13)
+  const syncSectionField = () => {
+    const selectedGrade = Number(gradeInput.value);
+    const requiresSection = !isStreamGrade(selectedGrade);
+    if (requiresSection) {
+      sectionInput.style.display = "";
+      sectionInput.required = true;
+      sectionInput.disabled = false;
+    } else {
+      sectionInput.style.display = "none";
+      sectionInput.required = false;
+      sectionInput.disabled = true;
+      sectionInput.value = "";
+    }
+  };
+
+  gradeInput.addEventListener("input", syncStreamField);
+  gradeInput.addEventListener("change", syncStreamField);
+  gradeInput.addEventListener("input", syncSectionField);
+  gradeInput.addEventListener("change", syncSectionField);
+  syncStreamField();
+  syncSectionField();
 
   adminClassForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -668,15 +1405,28 @@ if (adminClassForm) {
       .trim()
       .toUpperCase();
     const academicYear = Number(formData.get("academicYear"));
+    const maxStudents = Number(formData.get("maxStudents"));
+    const stream = String(formData.get("stream") || "").trim();
 
     if (!Number.isInteger(grade) || grade < 1 || grade > 13) {
       alert("Grade must be a number from 1 to 13.");
       return;
     }
 
-    if (!/^[A-Z]$/.test(section)) {
-      alert("Class must be a single capital letter.");
+    if ((grade === 12 || grade === 13) && !stream) {
+      alert("Please select a stream for grades 12 and 13.");
       return;
+    }
+
+    const requiresSection = !isStreamGrade(grade);
+    if (requiresSection) {
+      if (!/^[A-Z]$/.test(section)) {
+        alert("Class must be a single capital letter.");
+        return;
+      }
+    } else {
+      // For grade 12/13 classes are stream-only
+      section = "";
     }
 
     if (
@@ -685,6 +1435,15 @@ if (adminClassForm) {
       academicYear > 2100
     ) {
       alert("Please enter a valid academic year.");
+      return;
+    }
+
+    if (
+      !Number.isInteger(maxStudents) ||
+      maxStudents < 1 ||
+      maxStudents > 200
+    ) {
+      alert("Max students must be between 1 and 200.");
       return;
     }
 
@@ -698,6 +1457,8 @@ if (adminClassForm) {
           grade,
           section,
           academic_year: academicYear,
+          max_students: maxStudents,
+          stream,
         }),
       });
 
@@ -715,6 +1476,7 @@ if (adminClassForm) {
 
 if (adminTeacherForm) {
   const gradeSelect = adminTeacherForm.elements["grade"];
+  const classStreamSelect = adminTeacherForm.elements["classStream"];
   const classSelect = adminTeacherForm.elements["classSection"];
   const submitButton = adminTeacherForm.querySelector('button[type="submit"]');
   let availableClasses = [];
@@ -738,15 +1500,25 @@ if (adminTeacherForm) {
   function updateClassOptionsByGrade() {
     const selectedGrade = Number(gradeSelect.value);
     if (!Number.isInteger(selectedGrade)) {
+      setStreamSelectState(classStreamSelect, null);
       setSelectOptions(classSelect, "Select Class", []);
+      return;
+    }
+
+    setStreamSelectState(classStreamSelect, selectedGrade);
+    const selectedStream = String(classStreamSelect.value || "").trim();
+    if (isStreamGrade(selectedGrade) && !selectedStream) {
+      setSelectOptions(classSelect, "Select Stream first", []);
       return;
     }
 
     const sections = [
       ...new Set(
-        availableClasses
-          .filter((item) => item.grade === selectedGrade)
-          .map((item) => item.section),
+        filterClassesByGradeAndStream(
+          availableClasses,
+          selectedGrade,
+          selectedStream,
+        ).map((item) => item.section),
       ),
     ].sort();
 
@@ -758,6 +1530,22 @@ if (adminTeacherForm) {
         label: `Class ${section}`,
       })),
     );
+  }
+
+  // Hide/disable class select when grade is stream-only (12/13)
+  function syncTeacherClassField() {
+    const selectedGrade = Number(gradeSelect.value);
+    const requiresSection = !isStreamGrade(selectedGrade);
+    if (requiresSection) {
+      classSelect.style.display = "";
+      classSelect.required = true;
+      classSelect.disabled = false;
+    } else {
+      classSelect.style.display = "none";
+      classSelect.required = false;
+      classSelect.disabled = true;
+      classSelect.value = "";
+    }
   }
 
   async function loadAvailableClasses() {
@@ -783,6 +1571,7 @@ if (adminTeacherForm) {
           label: `Grade ${grade}`,
         })),
       );
+      setStreamSelectState(classStreamSelect, null);
       setSelectOptions(classSelect, "Select Class", []);
 
       submitButton.disabled = grades.length === 0;
@@ -801,7 +1590,24 @@ if (adminTeacherForm) {
   }
 
   gradeSelect.addEventListener("change", updateClassOptionsByGrade);
+  if (classStreamSelect) {
+    classStreamSelect.addEventListener("change", updateClassOptionsByGrade);
+  }
+  gradeSelect.addEventListener("change", syncTeacherClassField);
+  gradeSelect.addEventListener("input", syncTeacherClassField);
   loadAvailableClasses();
+  syncTeacherClassField();
+
+  const togglePassword = document.getElementById("toggleTeacherPassword");
+  if (togglePassword) {
+    togglePassword.addEventListener("change", () => {
+      const pwd = adminTeacherForm.elements["password"];
+      const cpwd = adminTeacherForm.elements["confirmPassword"];
+      const type = togglePassword.checked ? "text" : "password";
+      if (pwd) pwd.type = type;
+      if (cpwd) cpwd.type = type;
+    });
+  }
 
   adminTeacherForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -811,6 +1617,7 @@ if (adminTeacherForm) {
       full_name: String(formData.get("fullName") || "").trim(),
       teacher_id: String(formData.get("teacherId") || "").trim(),
       grade: Number(formData.get("grade")),
+      class_stream: String(formData.get("classStream") || "").trim(),
       class_section: String(formData.get("classSection") || "").trim(),
       phone: String(formData.get("phone") || "").trim(),
       email: String(formData.get("email") || "").trim(),
@@ -903,6 +1710,20 @@ if (loadTermReportButton) {
   });
 }
 
+if (loadSubjectPlansButton) {
+  loadSubjectPlansButton.addEventListener("click", async () => {
+    try {
+      loadSubjectPlansButton.disabled = true;
+      await loadSubjectPlans();
+    } catch (error) {
+      console.error("Load subject plans failed:", error);
+      alert(error.message || "Failed to load subject plans.");
+    } finally {
+      loadSubjectPlansButton.disabled = false;
+    }
+  });
+}
+
 if (downloadAttendanceReportButton) {
   downloadAttendanceReportButton.addEventListener("click", () => {
     if (!currentAttendanceData || currentAttendanceData.records.length === 0) {
@@ -956,14 +1777,17 @@ if (attendanceFilterForm) {
     const classSection = document.getElementById("attendanceClass").value;
     const date = document.getElementById("attendanceDate").value;
 
-    if (!year || !grade || !classSection || !date) {
+    const numericGrade = Number(grade);
+    const requiresSection = !isStreamGrade(numericGrade);
+
+    if (!year || !grade || (requiresSection && !classSection) || !date) {
       alert("Please fill all fields.");
       return;
     }
 
     try {
       const data = await apiFetch(
-        `${ATTENDANCE_REPORT_FILTERED_API}?year=${year}&grade=${grade}&class=${classSection}&date=${date}`,
+        `${ATTENDANCE_REPORT_FILTERED_API}?year=${year}&grade=${grade}&class=${classSection}&date=${date}&stream=${encodeURIComponent(attendanceStream ? attendanceStream.value : "")}`,
       );
 
       currentAttendanceData = {
@@ -1007,6 +1831,7 @@ if (attendanceFilterForm) {
       availableClassesForReports = data.classes || [];
       updateReportClassOptions(
         "attendanceGrade",
+        "attendanceStream",
         "attendanceClass",
         availableClassesForReports,
       );
@@ -1025,14 +1850,17 @@ if (termFilterForm) {
     const classSection = document.getElementById("termClass").value;
     const term = document.getElementById("termSelect").value;
 
-    if (!year || !grade || !classSection || !term) {
+    const numericGrade = Number(grade);
+    const requiresSection = !isStreamGrade(numericGrade);
+
+    if (!year || !grade || (requiresSection && !classSection) || !term) {
       alert("Please fill all fields.");
       return;
     }
 
     try {
       const data = await apiFetch(
-        `${TERM_REPORT_FILTERED_API}?year=${year}&grade=${grade}&class=${classSection}&term=${term}`,
+        `${TERM_REPORT_FILTERED_API}?year=${year}&grade=${grade}&class=${classSection}&term=${term}&stream=${encodeURIComponent(termStream ? termStream.value : "")}`,
       );
 
       currentTermData = {
@@ -1074,6 +1902,7 @@ if (termFilterForm) {
       availableClassesForReports = data.classes || [];
       updateReportClassOptions(
         "termGrade",
+        "termStream",
         "termClass",
         availableClassesForReports,
       );
@@ -1095,10 +1924,16 @@ setActiveTab("classes");
 (async function initDashboard() {
   try {
     await Promise.all([
+      loadDashboardMetrics(),
       loadTeachers(),
       loadClasses(),
       initializeClassDetailsFilters(),
     ]);
+
+    loadSubjectPlans().catch((error) => {
+      console.error("Load subject plans failed:", error);
+      renderSubjectPlans([]);
+    });
   } catch (error) {
     console.error("Admin dashboard init failed:", error);
     alert(error.message || "Failed to load dashboard data.");
@@ -1109,6 +1944,7 @@ setActiveTab("classes");
 const logoutBtn = document.getElementById("logoutBtn");
 if (logoutBtn) {
   logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("sureki_token");
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminUser");
     window.location.href = "/";

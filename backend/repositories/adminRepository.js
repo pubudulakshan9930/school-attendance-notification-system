@@ -22,12 +22,13 @@ async function getTeacherSummaryRows() {
   return rows;
 }
 
-async function findClassByYearGradeSection(year, grade, section) {
+async function findClassByYearGradeSection(year, grade, section, stream = "") {
   const query = `
     SELECT
       c.id,
       c.grade,
       c.section,
+      c.stream,
       c.academic_year,
       c.teacher_id,
       c.is_active,
@@ -40,38 +41,49 @@ async function findClassByYearGradeSection(year, grade, section) {
     WHERE c.academic_year = $1
       AND c.grade = $2
       AND c.section = $3
+      AND c.stream = $4
     LIMIT 1
   `;
 
-  const { rows } = await pool.query(query, [year, grade, section]);
+  const { rows } = await pool.query(query, [year, grade, section, stream]);
   return rows[0] || null;
 }
 
 async function getActiveClasses() {
   const query = `
-    SELECT c.id, c.grade, c.section, c.academic_year, c.teacher_id, c.is_active,
-           u.full_name AS teacher_name
+    SELECT c.id, c.grade, c.section, c.stream, c.academic_year, c.max_students, c.teacher_id, c.is_active,
+           u.full_name AS teacher_name,
+           COUNT(sca.student_id) AS student_count
     FROM classes c
     LEFT JOIN users u ON u.id = c.teacher_id
+    LEFT JOIN student_class_assignments sca ON sca.class_id = c.id AND sca.removed_at IS NULL
     WHERE c.is_active = true
-    ORDER BY c.academic_year DESC, c.grade ASC, c.section ASC
+    GROUP BY c.id, u.full_name
+    ORDER BY c.academic_year DESC, c.grade ASC, c.stream ASC, c.section ASC
   `;
 
   const { rows } = await pool.query(query);
   return rows;
 }
 
-async function createClassRecord(grade, section, academicYear) {
+async function createClassRecord(
+  grade,
+  section,
+  academicYear,
+  stream = "",
+  maxStudents = 40,
+) {
   const existingQuery = `
     SELECT id
     FROM classes
-    WHERE grade = $1 AND section = $2 AND academic_year = $3
+    WHERE grade = $1 AND section = $2 AND academic_year = $3 AND stream = $4
     LIMIT 1
   `;
   const existingResult = await pool.query(existingQuery, [
     grade,
     section,
     academicYear,
+    stream,
   ]);
 
   if (existingResult.rows.length > 0) {
@@ -83,17 +95,30 @@ async function createClassRecord(grade, section, academicYear) {
   }
 
   const insertQuery = `
-    INSERT INTO classes (grade, section, academic_year)
-    VALUES ($1, $2, $3)
-    RETURNING id, grade, section, academic_year, teacher_id, is_active, created_at
+    INSERT INTO classes (grade, section, academic_year, stream, max_students)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id, grade, section, stream, academic_year, max_students, teacher_id, is_active, created_at
   `;
   const insertResult = await pool.query(insertQuery, [
     grade,
     section,
     academicYear,
+    stream,
+    maxStudents,
   ]);
 
   return insertResult.rows[0];
+}
+
+async function deleteClassRecord(classId) {
+  const deleteQuery = `
+    DELETE FROM classes
+    WHERE id = $1
+    RETURNING id, grade, section, stream, academic_year, max_students, teacher_id
+  `;
+
+  const { rows } = await pool.query(deleteQuery, [classId]);
+  return rows[0] || null;
 }
 
 async function getClassStudents(classId) {
@@ -167,6 +192,7 @@ async function getAttendanceReportRecentRows() {
       s.full_name AS student_name,
       c.grade,
       c.section,
+      c.stream,
       c.academic_year,
       u.full_name AS teacher_name
     FROM attendance_records ar
@@ -206,6 +232,7 @@ async function getTermTestReportRecentRows() {
       s.full_name AS student_name,
       c.grade,
       c.section,
+      c.stream,
       sub.name AS subject_name
     FROM term_tests tt
     JOIN students s ON s.id = tt.student_id
@@ -219,7 +246,13 @@ async function getTermTestReportRecentRows() {
   return rows;
 }
 
-async function getFilteredAttendanceRows(year, grade, section, date) {
+async function getFilteredAttendanceRows(
+  year,
+  grade,
+  section,
+  date,
+  stream = "",
+) {
   const query = `
     SELECT
       ar.id,
@@ -230,6 +263,7 @@ async function getFilteredAttendanceRows(year, grade, section, date) {
       s.student_code,
       c.grade,
       c.section,
+      c.stream,
       c.academic_year,
       u.full_name AS teacher_name,
       sh.attendance_date
@@ -241,15 +275,28 @@ async function getFilteredAttendanceRows(year, grade, section, date) {
     WHERE c.academic_year = $1
       AND c.grade = $2
       AND c.section = $3
+      AND c.stream = $5
       AND sh.attendance_date = $4
     ORDER BY s.full_name ASC
   `;
 
-  const { rows } = await pool.query(query, [year, grade, section, date]);
+  const { rows } = await pool.query(query, [
+    year,
+    grade,
+    section,
+    date,
+    stream,
+  ]);
   return rows;
 }
 
-async function getFilteredAttendanceSummary(year, grade, section, date) {
+async function getFilteredAttendanceSummary(
+  year,
+  grade,
+  section,
+  date,
+  stream = "",
+) {
   const query = `
     SELECT
       COUNT(*) FILTER (WHERE ar.status = 'present') AS present_count,
@@ -261,14 +308,27 @@ async function getFilteredAttendanceSummary(year, grade, section, date) {
     WHERE c.academic_year = $1
       AND c.grade = $2
       AND c.section = $3
+      AND c.stream = $5
       AND sh.attendance_date = $4
   `;
 
-  const { rows } = await pool.query(query, [year, grade, section, date]);
+  const { rows } = await pool.query(query, [
+    year,
+    grade,
+    section,
+    date,
+    stream,
+  ]);
   return rows[0] || null;
 }
 
-async function getFilteredTermTestRows(year, grade, section, term) {
+async function getFilteredTermTestRows(
+  year,
+  grade,
+  section,
+  term,
+  stream = "",
+) {
   const query = `
     SELECT
       tt.id,
@@ -280,6 +340,7 @@ async function getFilteredTermTestRows(year, grade, section, term) {
       s.student_code,
       c.grade,
       c.section,
+      c.stream,
       sub.name AS subject_name
     FROM term_tests tt
     JOIN students s ON s.id = tt.student_id
@@ -288,15 +349,28 @@ async function getFilteredTermTestRows(year, grade, section, term) {
     WHERE c.academic_year = $1
       AND c.grade = $2
       AND c.section = $3
+      AND c.stream = $5
       AND tt.term = $4
     ORDER BY s.full_name ASC, sub.name ASC
   `;
 
-  const { rows } = await pool.query(query, [year, grade, section, term]);
+  const { rows } = await pool.query(query, [
+    year,
+    grade,
+    section,
+    term,
+    stream,
+  ]);
   return rows;
 }
 
-async function getFilteredTermTestSummary(year, grade, section, term) {
+async function getFilteredTermTestSummary(
+  year,
+  grade,
+  section,
+  term,
+  stream = "",
+) {
   const query = `
     SELECT
       COUNT(*) AS total_records,
@@ -307,10 +381,102 @@ async function getFilteredTermTestSummary(year, grade, section, term) {
     WHERE c.academic_year = $1
       AND c.grade = $2
       AND c.section = $3
+      AND c.stream = $5
       AND tt.term = $4
   `;
 
-  const { rows } = await pool.query(query, [year, grade, section, term]);
+  const { rows } = await pool.query(query, [
+    year,
+    grade,
+    section,
+    term,
+    stream,
+  ]);
+  return rows[0] || null;
+}
+
+async function getCustomSubjectPlan(grade, stream = "") {
+  const query = `
+    SELECT
+      id,
+      grade,
+      stream,
+      fixed_subjects,
+      language_options,
+      religion_options,
+      elective_category_1_options,
+      elective_category_2_options,
+      elective_category_3_options,
+      is_active,
+      created_at,
+      updated_at
+    FROM class_subject_plans
+    WHERE grade = $1 AND stream = $2
+    LIMIT 1
+  `;
+
+  const { rows } = await pool.query(query, [grade, stream]);
+  return rows[0] || null;
+}
+
+async function getAllCustomSubjectPlans() {
+  const query = `
+    SELECT
+      id,
+      grade,
+      stream,
+      fixed_subjects,
+      language_options,
+      religion_options,
+      elective_category_1_options,
+      elective_category_2_options,
+      elective_category_3_options,
+      is_active,
+      created_at,
+      updated_at
+    FROM class_subject_plans
+    ORDER BY grade ASC, stream ASC
+  `;
+
+  const { rows } = await pool.query(query);
+  return rows;
+}
+
+async function updateSubjectPlan(grade, stream, planData) {
+  const {
+    fixed_subjects,
+    language_options,
+    religion_options,
+    elective_category_1_options,
+    elective_category_2_options,
+    elective_category_3_options,
+  } = planData;
+
+  const query = `
+    UPDATE class_subject_plans
+    SET
+      fixed_subjects = $1,
+      language_options = $2,
+      religion_options = $3,
+      elective_category_1_options = $4,
+      elective_category_2_options = $5,
+      elective_category_3_options = $6,
+      updated_at = NOW()
+    WHERE grade = $7 AND stream = $8
+    RETURNING *
+  `;
+
+  const { rows } = await pool.query(query, [
+    fixed_subjects || "",
+    language_options || "",
+    religion_options || "",
+    elective_category_1_options || "",
+    elective_category_2_options || "",
+    elective_category_3_options || "",
+    grade,
+    stream,
+  ]);
+
   return rows[0] || null;
 }
 
@@ -330,4 +496,8 @@ module.exports = {
   getFilteredAttendanceSummary,
   getFilteredTermTestRows,
   getFilteredTermTestSummary,
+  deleteClassRecord,
+  getCustomSubjectPlan,
+  getAllCustomSubjectPlans,
+  updateSubjectPlan,
 };

@@ -12,24 +12,28 @@
   <body>
     <main class="term-page">
       <header class="page-header">
-        <a
-          class="back-button"
-          href="term.html"
-          aria-label="Back to Term Selection"
-          >←</a
-        >
-        <div>
-          <h3>Student List</h3>
-          <p>Term: <strong id="currentTerm"></strong></p>
+        <a class="page-nav-link" href="term.html">Change Term</a>
+        <div class="header-content">
+          <h1>👥 Select Student</h1>
+          <p class="header-subtitle">
+            Term: <strong id="currentTerm" style="color: #10223d"></strong>
+          </p>
         </div>
       </header>
 
-      <section class="student-list card">
-        <h4>Students</h4>
-        <div class="student-placeholder" id="studentListPlaceholder">
-          No term selected. Return to term selection and choose a term.
+      <section class="student-selector-container">
+        <div class="student-list-card">
+          <div class="student-list-header">
+            <h2>Class Students</h2>
+            <p>Select a student to enter their marks</p>
+          </div>
+
+          <div class="student-placeholder" id="studentListPlaceholder">
+            Loading students...
+          </div>
+
+          <ul class="student-list-items" id="studentList"></ul>
         </div>
-        <ul id="studentList"></ul>
       </section>
     </main>
 

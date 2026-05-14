@@ -12,34 +12,36 @@
   <body>
     <main class="term-page">
       <header class="page-header">
-        <a
-          class="back-button"
-          href="student-list.html"
-          aria-label="Back to Student List"
-          >←</a
-        >
-        <div>
-          <h3>Fill Student Marks</h3>
-          <p>
-            Term: <strong id="currentTerm"></strong> — Student:
-            <strong id="currentStudent"></strong>
+        <div class="header-content">
+          <h1>📝 Enter Student Marks</h1>
+          <p class="header-subtitle">
+            Term: <strong id="currentTerm" style="color: #10223d"></strong> —
+            Student:
+            <strong id="currentStudent" style="color: #10223d"></strong>
           </p>
         </div>
       </header>
 
-      <section class="marks-panel card">
-        <div class="marks-header">
+      <section class="marks-entry-card">
+        <div class="marks-entry-header">
           <div>
-            <h4 id="studentName"></h4>
-            <p id="marksHint">Enter subject marks and click Done to save.</p>
+            <h2 id="studentName"></h2>
+            <p id="marksHint">
+              Enter marks for each subject (0-100) and click Save
+            </p>
           </div>
         </div>
 
-        <div class="subject-list" id="subjectList"></div>
+        <form class="subject-list" id="subjectList"></form>
 
-        <button type="button" class="btn btn-primary" id="saveButton">
-          Save
-        </button>
+        <div class="marks-actions">
+          <button type="button" class="btn btn-primary" id="saveButton">
+            ✓ Save Marks
+          </button>
+          <a class="btn btn-secondary page-nav-link" href="student-list.html">
+            Change Student
+          </a>
+        </div>
       </section>
     </main>
 
