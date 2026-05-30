@@ -6,6 +6,9 @@ body {
   margin: 0;
   min-height: 100vh;
   padding: 24px;
+  display: block;
+  align-items: initial;
+  justify-content: initial;
   font-family: "Poppins", sans-serif;
   background:
     radial-gradient(
@@ -27,6 +30,15 @@ body {
   align-items: flex-start;
   gap: 20px;
   margin-bottom: 40px;
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  min-width: 0;
 }
 
 .page-nav-link {
@@ -86,6 +98,7 @@ body {
   font-size: clamp(1.8rem, 4vw, 2.5rem);
   font-weight: 800;
   color: #10223d;
+  text-align: left;
 }
 
 .header-subtitle {
@@ -93,6 +106,7 @@ body {
   font-size: 1.05rem;
   color: #6b7280;
   font-weight: 500;
+  text-align: left;
 }
 
 /* Term Selector Container */
@@ -254,6 +268,10 @@ body {
 }
 
 .marks-header {
+  display: flex;
+  justify-content: flex-start; /* ensure header content starts from the left */
+  align-items: center;
+  gap: 12px;
   margin-bottom: 28px;
   padding-bottom: 20px;
   border-bottom: 2px solid #f0f4f8;
@@ -270,6 +288,10 @@ body {
   margin: 0;
   color: #6b7280;
   font-size: 0.95rem;
+}
+
+.marks-term {
+  margin-left: auto; /* push term badge to the right */
 }
 
 .subject-list {
@@ -647,6 +669,29 @@ body {
   box-shadow: 0 8px 20px rgba(16, 34, 61, 0.2);
 }
 
+/* Subject status styles */
+.student-list-items button .subject-badge {
+  float: right;
+  background: rgba(16, 34, 61, 0.06);
+  color: #10223d;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.student-list-items button.subject-filled {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ddf6ea 100%);
+  border-color: #10b981;
+  color: #064e3b;
+}
+
+.student-list-items button.subject-empty {
+  background: linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%);
+  border-color: #ef4444;
+  color: #7f1d1d;
+}
+
 /* Student List and Panel Styling */
 .term-grid {
   display: grid;
@@ -716,6 +761,47 @@ body {
 
 .hidden {
   display: none;
+}
+
+/* Marks Entry Row Indicators */
+.subject-row-filled {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ddf6ea 100%) !important;
+  border-color: #10b981 !important;
+}
+
+.subject-row-filled label {
+  color: #064e3b !important;
+}
+
+.subject-row-empty {
+  background: linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%) !important;
+  border-color: #ef4444 !important;
+}
+
+.subject-row-empty label {
+  color: #7f1d1d !important;
+}
+
+.mark-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mark-badge-filled {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.mark-badge-empty {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
 }
 
 @media (max-width: 1024px) {
@@ -822,8 +908,13 @@ body {
 
   .page-header {
     flex-direction: column;
-    align-items: center;
-    text-align: center;
+    align-items: flex-start;
+    text-align: left;
+    gap: 12px;
+  }
+
+  .page-nav-link {
+    align-self: flex-start;
   }
 
   .back-button {

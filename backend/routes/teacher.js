@@ -3,40 +3,85 @@ const teacherController = require("../controllers/teacherController");
 const { authenticateToken, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
-router.use(authenticateToken, requireRole("teacher"));
+router.use(authenticateToken);
 
-router.get("/dashboard", teacherController.getDashboard);
+const requireTeacherRole = requireRole("teacher");
+
+router.get("/dashboard", requireTeacherRole, teacherController.getDashboard);
 router.get(
   "/students/template",
+  requireTeacherRole,
   teacherController.getStudentRegistrationTemplate,
 );
-router.get("/profile", teacherController.getTeacherProfile);
-router.get("/students", teacherController.getStudents);
-router.get("/class-details", teacherController.getClassDetails);
+router.get(
+  "/term-marks/template",
+  requireTeacherRole,
+  teacherController.getSubjectTermMarksTemplate,
+);
+router.get("/profile", requireTeacherRole, teacherController.getTeacherProfile);
+router.get("/students", requireTeacherRole, teacherController.getStudents);
+router.get(
+  "/class-details",
+  requireTeacherRole,
+  teacherController.getClassDetails,
+);
 router.get(
   "/students/:studentId/subjects",
+  requireTeacherRole,
   teacherController.getStudentSubjects,
 );
-router.get("/subjects", teacherController.getSubjects);
-router.get("/student-marks", teacherController.getStudentMarks);
+router.get("/subjects", requireTeacherRole, teacherController.getSubjects);
+router.get(
+  "/student-marks",
+  requireTeacherRole,
+  teacherController.getStudentMarks,
+);
 router.post(
   "/term-marks/upload/preview",
+  requireTeacherRole,
   teacherController.previewSubjectTermMarksUpload,
 );
 router.post(
   "/term-marks/upload",
+  requireTeacherRole,
   teacherController.uploadSubjectTermMarksSpreadsheet,
 );
-router.post("/students", teacherController.registerStudent);
-router.post("/students/bulk-upload", teacherController.bulkUploadStudents);
-router.put("/students/:studentId", teacherController.updateStudentDetails);
-router.post("/attendance/save", teacherController.saveAttendance);
+router.post("/students", requireTeacherRole, teacherController.registerStudent);
+router.post(
+  "/students/bulk-upload",
+  requireTeacherRole,
+  teacherController.bulkUploadStudents,
+);
+router.put(
+  "/students/:studentId",
+  requireTeacherRole,
+  teacherController.updateStudentDetails,
+);
+router.post(
+  "/attendance/save",
+  requireTeacherRole,
+  teacherController.saveAttendance,
+);
+router.get(
+  "/attendance/status",
+  requireTeacherRole,
+  teacherController.getAttendanceStatus,
+);
 router.post(
   "/attendance/process-alerts",
+  requireTeacherRole,
   teacherController.processAttendanceAlerts,
 );
 router.post("/attendance/notify", teacherController.notifyAttendance);
-router.post("/term-marks/save", teacherController.saveTermMarks);
-router.put("/profile", teacherController.updateTeacherProfile);
+router.post(
+  "/term-marks/save",
+  requireTeacherRole,
+  teacherController.saveTermMarks,
+);
+router.put(
+  "/profile",
+  requireTeacherRole,
+  teacherController.updateTeacherProfile,
+);
 
 module.exports = router;

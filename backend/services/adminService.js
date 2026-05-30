@@ -509,18 +509,40 @@ async function getStudentDetailedInfo(studentId, alertLimit = 5) {
   const studentQuery = `
     SELECT
       s.id,
-      s.name,
+      s.full_name,
       s.parent_name,
       s.parent_phone,
       s.parent_email,
+      s.student_code,
+      s.gender,
+      s.city,
+      s.address,
       s.is_active,
-      c.grade,
-      c.section,
-      c.academic_year,
+      s.created_at,
+      s.updated_at,
+      current_class.class_id,
+      current_class.grade,
+      current_class.section,
+      current_class.stream,
+      current_class.academic_year,
       u.full_name AS teacher_name
     FROM students s
-    LEFT JOIN classes c ON c.id = s.class_id
-    LEFT JOIN users u ON u.id = c.teacher_id
+    LEFT JOIN LATERAL (
+      SELECT
+        c.id AS class_id,
+        c.grade,
+        c.section,
+        c.stream,
+        c.academic_year,
+        c.teacher_id
+      FROM student_class_assignments sca
+      JOIN classes c ON c.id = sca.class_id
+      WHERE sca.student_id = s.id
+        AND sca.removed_at IS NULL
+      ORDER BY sca.assigned_at DESC
+      LIMIT 1
+    ) current_class ON TRUE
+    LEFT JOIN users u ON u.id = current_class.teacher_id
     WHERE s.id = $1
   `;
 

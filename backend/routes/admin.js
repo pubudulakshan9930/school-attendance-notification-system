@@ -11,6 +11,7 @@ router.get("/dashboard", adminController.getDashboard);
 // Teacher Management
 router.get("/teachers", adminController.listTeachers);
 router.post("/teachers", adminController.registerTeacher);
+router.put("/teachers/:teacherId", adminController.updateTeacher);
 
 // Class Management
 router.post("/classes", adminController.createClass);
@@ -21,6 +22,8 @@ router.get("/classes/details", adminController.getClassDetails);
 // Student Management
 router.get("/students", adminController.getStudents);
 router.get("/students/:studentId", adminController.getStudentDetail);
+router.put("/students/:studentId", adminController.updateStudent);
+router.delete("/students/:studentId", adminController.deleteStudent);
 
 // Attendance Monitoring
 router.get("/attendance", adminController.getAttendanceMonitoring);
@@ -49,6 +52,8 @@ router.get(
   "/reports/term-tests/filtered",
   adminController.getFilteredTermTestReport,
 );
+router.get("/reports/term-tests/csv", adminController.getTermTestReportCsv);
+router.post("/term-marks/approve", adminController.approveTermMarks);
 
 // Settings
 router.get("/settings", adminController.getSettings);
@@ -61,5 +66,9 @@ router.post("/promote", adminController.promoteStudents);
 
 // Emergency Alerts
 router.post("/alerts/emergency", adminController.sendEmergencyAlert);
+
+// Attendance Settings
+router.get("/attendance-settings", adminController.getAttendanceSettings);
+router.put("/attendance-settings", adminController.updateAttendanceSettings);
 
 module.exports = router;

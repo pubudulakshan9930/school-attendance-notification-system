@@ -241,6 +241,10 @@ async function loadAssignedClassDetails() {
     }
 
     if (!data.class) {
+      const totalEl = document.getElementById("totalStudents");
+      if (totalEl) {
+        totalEl.textContent = `Total students: 0`;
+      }
       renderDetailsList(
         classMetaList,
         [],
@@ -300,6 +304,12 @@ async function loadAssignedClassDetails() {
         ];
       },
     );
+    // Update total students count in the UI
+    const totalEl = document.getElementById("totalStudents");
+    const totalCount = (data.students || []).length;
+    if (totalEl) {
+      totalEl.textContent = `Total students: ${totalCount}`;
+    }
 
     renderDetailsList(
       studentsList,
@@ -370,6 +380,10 @@ async function loadAssignedClassDetails() {
           (subject) => subject.name,
         );
         return [
+          {
+            label: "Student Code",
+            value: student.student_code || "N/A",
+          },
           {
             label: "Student",
             value: student.full_name,

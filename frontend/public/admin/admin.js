@@ -3,14 +3,19 @@ const ADMIN_TEACHERS_API = "/api/admin/teachers";
 const ADMIN_CLASS_DETAILS_API = "/api/admin/classes/details";
 const ATTENDANCE_REPORT_API = "/api/admin/reports/attendance";
 const TERM_REPORT_API = "/api/admin/reports/term-tests";
+const TERM_MARKS_APPROVE_API = "/api/admin/term-marks/approve";
 const ATTENDANCE_REPORT_FILTERED_API = "/api/admin/reports/attendance/filtered";
 const TERM_REPORT_FILTERED_API = "/api/admin/reports/term-tests/filtered";
 const EMERGENCY_ALERT_API = "/api/admin/alerts/emergency";
 const SUBJECT_PLANS_API = "/api/admin/subject-plans";
+const ATTENDANCE_SETTINGS_API = "/api/admin/attendance-settings";
 
 const adminClassForm = document.getElementById("adminClassForm");
 const adminTeacherForm = document.getElementById("adminTeacherForm");
 const emergencyAlertForm = document.getElementById("emergencyAlertForm");
+const attendanceSettingsForm = document.getElementById(
+  "attendanceSettingsForm",
+);
 const adminClassesList = document.getElementById("adminClassesList");
 const teacherSummary = document.getElementById("teacherSummary");
 const studentCount = document.getElementById("studentCount");
@@ -36,6 +41,10 @@ const attendanceReportList = document.getElementById("attendanceReportList");
 const attendanceStream = document.getElementById("attendanceStream");
 const termReportSummary = document.getElementById("termReportSummary");
 const termReportList = document.getElementById("termReportList");
+const pendingApprovalsSummary = document.getElementById(
+  "pendingApprovalsSummary",
+);
+const pendingApprovalsList = document.getElementById("pendingApprovalsList");
 const termStream = document.getElementById("termStream");
 const loadAttendanceReportButton = document.getElementById(
   "loadAttendanceReport",
@@ -45,6 +54,9 @@ const downloadAttendanceReportButton = document.getElementById(
   "downloadAttendanceReport",
 );
 const downloadTermReportButton = document.getElementById("downloadTermReport");
+const attendanceReportCard = document.getElementById("attendanceReportCard");
+const termReportCard = document.getElementById("termReportCard");
+const pendingApprovalsBadge = document.getElementById("pendingApprovalsBadge");
 const loadSubjectPlansButton = document.getElementById("loadSubjectPlans");
 const subjectPlansBoard = document.getElementById("subjectPlansBoard");
 const sidebarGreeting = document.getElementById("sidebarGreeting");
@@ -54,6 +66,7 @@ const panels = Array.from(document.querySelectorAll(".admin-panel"));
 let teacherCache = [];
 let currentAttendanceData = null;
 let currentTermData = null;
+let currentTermFilter = null;
 let availableClassesForReports = [];
 let availableClassesForClassDetails = [];
 
@@ -384,6 +397,33 @@ function setActiveTab(tabName) {
   });
 }
 
+function scrollToTabPanel(tabName) {
+  const panel = document.querySelector(`.admin-panel[data-panel="${tabName}"]`);
+  if (!panel) {
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+function activateSidebarTab(tabName, options = {}) {
+  if (!tabName) {
+    return;
+  }
+
+  setActiveTab(tabName);
+
+  if (options.updateHash) {
+    history.replaceState(null, "", `#${tabName}`);
+  }
+
+  if (options.scroll !== false) {
+    scrollToTabPanel(tabName);
+  }
+}
+
 function updateSidebarGreetingByTime() {
   if (!sidebarGreeting) {
     return;
@@ -473,6 +513,260 @@ function renderList(container, items, emptyMessage, formatter) {
     listItem.textContent = formatter(item);
     container.appendChild(listItem);
   });
+}
+
+function buildTermMarksMatrix(records) {
+  const subjects = [];
+  const subjectSet = new Set();
+  const studentsByKey = new Map();
+
+  (records || []).forEach((record) => {
+    const subjectName = String(record.subject_name || "").trim();
+    if (subjectName && !subjectSet.has(subjectName)) {
+      subjectSet.add(subjectName);
+      subjects.push(subjectName);
+    }
+
+    const studentKey = `${record.student_id || ""}::${record.student_code || ""}::${record.student_name || ""}`;
+    if (!studentsByKey.has(studentKey)) {
+      studentsByKey.set(studentKey, {
+        student_name: record.student_name || "N/A",
+        student_code: record.student_code || "",
+        marks: {},
+      });
+    }
+
+    studentsByKey.get(studentKey).marks[subjectName] = record.mark;
+  });
+
+  const students = Array.from(studentsByKey.values()).sort((left, right) =>
+    String(left.student_name || "").localeCompare(
+      String(right.student_name || ""),
+    ),
+  );
+
+  return { subjects, students };
+}
+
+function renderTermMarksTable(container, records, emptyMessage) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "";
+
+  if (!records || records.length === 0) {
+    const emptyState = document.createElement("div");
+    emptyState.className = "empty-state";
+    emptyState.textContent = emptyMessage;
+    container.appendChild(emptyState);
+    return;
+  }
+
+  const { subjects, students } = buildTermMarksMatrix(records);
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "table-responsive";
+
+  const table = document.createElement("table");
+  table.className = "term-marks-table";
+
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+
+  ["Student Name", "Student Code", ...subjects].forEach((label) => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    headRow.appendChild(th);
+  });
+
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  students.forEach((student) => {
+    const row = document.createElement("tr");
+
+    const nameCell = document.createElement("td");
+    nameCell.textContent = student.student_name;
+    row.appendChild(nameCell);
+
+    const codeCell = document.createElement("td");
+    codeCell.textContent = student.student_code || "-";
+    row.appendChild(codeCell);
+
+    subjects.forEach((subjectName) => {
+      const td = document.createElement("td");
+      const mark = student.marks[subjectName];
+      td.textContent = Number.isFinite(Number(mark)) ? String(mark) : "-";
+      row.appendChild(td);
+    });
+
+    tbody.appendChild(row);
+  });
+
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  container.appendChild(tableWrap);
+}
+
+function setActiveReportCard(activeReport) {
+  if (attendanceReportCard) {
+    attendanceReportCard.classList.toggle(
+      "is-hidden",
+      activeReport !== "attendance",
+    );
+  }
+
+  if (termReportCard) {
+    termReportCard.classList.toggle("is-hidden", activeReport !== "term");
+  }
+}
+
+function updatePendingApprovalsBadge(count) {
+  if (!pendingApprovalsBadge) {
+    return;
+  }
+
+  const safeCount = Math.max(0, Number(count) || 0);
+  pendingApprovalsBadge.textContent = String(safeCount);
+  pendingApprovalsBadge.style.display = safeCount > 0 ? "inline-flex" : "none";
+}
+
+function renderPendingTermReviews(container, items, emptyMessage, onApprove) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "";
+  if (!items || items.length === 0) {
+    const emptyItem = document.createElement("li");
+    emptyItem.textContent = emptyMessage;
+    container.appendChild(emptyItem);
+    return;
+  }
+
+  items.forEach((item) => {
+    const card = document.createElement("li");
+    card.className = "panel-card";
+    card.style.listStyle = "none";
+    card.style.padding = "1rem";
+    card.style.marginBottom = "1rem";
+
+    const title = document.createElement("h4");
+    title.style.margin = "0 0 0.5rem 0";
+    title.style.color = "#10223d";
+    title.textContent = `${item.class_label || formatClassLabel(item.class_info || item)} - Term ${item.term} (${item.academic_year})`;
+
+    const meta = document.createElement("p");
+    meta.style.margin = "0 0 0.75rem 0";
+    meta.style.color = "#5a6c7d";
+    meta.textContent = `${(item.students || []).length} student(s) | ${(item.subjects || []).length} subject(s)`;
+
+    const tableWrap = document.createElement("div");
+    tableWrap.style.overflowX = "auto";
+
+    const table = document.createElement("table");
+    table.className = "approval-table";
+    table.style.width = "100%";
+    table.style.borderCollapse = "collapse";
+    table.style.minWidth = "720px";
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    const studentHead = document.createElement("th");
+    studentHead.textContent = "Student";
+    studentHead.style.textAlign = "left";
+    headRow.appendChild(studentHead);
+
+    (item.subjects || []).forEach((subject) => {
+      const th = document.createElement("th");
+      th.textContent = subject.subject_name;
+      th.style.textAlign = "center";
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    (item.students || []).forEach((student) => {
+      const row = document.createElement("tr");
+      const nameCell = document.createElement("td");
+      nameCell.textContent = `${student.student_name} (${student.student_code || "N/A"})`;
+      row.appendChild(nameCell);
+
+      (item.subjects || []).forEach((subject) => {
+        const td = document.createElement("td");
+        td.style.textAlign = "center";
+        const mark = student.marks?.[subject.subject_name];
+        td.textContent = Number.isFinite(Number(mark)) ? String(mark) : "-";
+        row.appendChild(td);
+      });
+
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+
+    const actions = document.createElement("div");
+    actions.style.marginTop = "0.75rem";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-primary";
+    button.textContent = "Approve Class Term";
+    button.addEventListener("click", () => onApprove(item, button));
+    actions.appendChild(button);
+
+    card.appendChild(title);
+    card.appendChild(meta);
+    card.appendChild(tableWrap);
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+}
+
+function renderPendingApprovalsWidget(data) {
+  if (pendingApprovalsSummary) {
+    renderSummaryCards(pendingApprovalsSummary, {
+      "Pending approvals": data.pending_count || 0,
+    });
+  }
+
+  renderPendingTermReviews(
+    pendingApprovalsList,
+    data.pending_reviews || [],
+    "No pending term approvals.",
+    async (review, button) => {
+      if (!review?.class_id || !review?.term || !review?.academic_year) {
+        alert("Approval record is incomplete.");
+        return;
+      }
+
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "Approving...";
+
+      try {
+        await apiFetch(TERM_MARKS_APPROVE_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            class_id: review.class_id,
+            term: review.term,
+            academic_year: review.academic_year,
+          }),
+        });
+
+        await loadPendingTermApprovals();
+        alert("Term marks approved and parent SMS processed.");
+      } catch (error) {
+        console.error("Approve term marks failed:", error);
+        alert(error.message || "Failed to approve term marks.");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    },
+  );
 }
 
 function formatSubjectGroups(groups) {
@@ -1311,6 +1605,8 @@ if (adminClassesList) {
 }
 
 async function loadAttendanceReport() {
+  setActiveReportCard("attendance");
+
   const data = await apiFetch(ATTENDANCE_REPORT_API);
   const summary = data.summary || {};
 
@@ -1332,8 +1628,17 @@ async function loadAttendanceReport() {
 }
 
 async function loadTermReport() {
+  setActiveReportCard("term");
+
   const data = await apiFetch(TERM_REPORT_API);
   const summary = data.summary || {};
+
+  currentTermData = {
+    records: data.recent_records || [],
+    summary,
+    pending_reviews: data.pending_reviews || [],
+    pending_count: data.pending_count || 0,
+  };
 
   renderSummaryCards(termReportSummary, {
     "Total records": summary.total_records || 0,
@@ -1341,19 +1646,116 @@ async function loadTermReport() {
     Distinctions: summary.distinction_count || 0,
   });
 
-  renderList(
+  renderTermMarksTable(
     termReportList,
     data.recent_records || [],
     "No term-test records found.",
-    (record) => {
-      return `${record.student_name} - Term ${record.term} ${record.subject_name} - ${record.mark}`;
-    },
   );
+}
+
+async function loadPendingTermApprovals() {
+  const data = await apiFetch(TERM_REPORT_API);
+
+  currentTermData = {
+    ...(currentTermData || {}),
+    pending_reviews: data.pending_reviews || [],
+    pending_count: data.pending_count || 0,
+  };
+
+  updatePendingApprovalsBadge(data.pending_count || 0);
+
+  renderPendingApprovalsWidget(data);
+}
+
+async function loadPendingTermApprovalCount() {
+  try {
+    const data = await apiFetch(TERM_REPORT_API);
+    updatePendingApprovalsBadge(data.pending_count || 0);
+  } catch (error) {
+    console.error("Load pending term approval count failed:", error);
+  }
 }
 
 async function loadSubjectPlans() {
   const data = await apiFetch(SUBJECT_PLANS_API);
   renderSubjectPlans(data.data || []);
+}
+
+async function loadAttendanceSettings() {
+  try {
+    const data = await apiFetch(ATTENDANCE_SETTINGS_API, { method: "GET" });
+    const settings = data.data || {};
+
+    // Set form values
+    const openTimeInput = document.getElementById("attendanceOpenTime");
+    const closeTimeInput = document.getElementById("attendanceCloseTime");
+    const timezoneInput = document.getElementById("attendanceTimezone");
+
+    if (openTimeInput && settings.open_time) {
+      openTimeInput.value = settings.open_time;
+    }
+    if (closeTimeInput && settings.close_time) {
+      closeTimeInput.value = settings.close_time;
+    }
+    if (timezoneInput && settings.timezone) {
+      timezoneInput.value = settings.timezone;
+    }
+
+    // Update status display
+    updateAttendanceSettingsStatus(settings);
+  } catch (error) {
+    console.error("Failed to load attendance settings:", error);
+  }
+}
+
+function updateAttendanceSettingsStatus(settings) {
+  const openTime = settings.open_time || "07:30";
+  const closeTime = settings.close_time || "09:30";
+
+  const displayOpenTime = document.getElementById("displayOpenTime");
+  const displayCloseTime = document.getElementById("displayCloseTime");
+  const statusElement = document.getElementById("attendanceWindowStatus");
+
+  if (displayOpenTime) {
+    displayOpenTime.textContent = formatTime12Hour(openTime);
+  }
+  if (displayCloseTime) {
+    displayCloseTime.textContent = formatTime12Hour(closeTime);
+  }
+
+  // Check if we're within attendance window
+  if (statusElement) {
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const [openHour, openMin] = openTime.split(":").map(Number);
+    const [closeHour, closeMin] = closeTime.split(":").map(Number);
+    const openTimeInMinutes = openHour * 60 + openMin;
+    const closeTimeInMinutes = closeHour * 60 + closeMin;
+
+    if (currentTime >= openTimeInMinutes && currentTime < closeTimeInMinutes) {
+      statusElement.style.background = "#dcfce7";
+      statusElement.style.color = "#166534";
+      statusElement.style.borderLeft = "4px solid #16a34a";
+      statusElement.innerHTML = "✓ Attendance window is currently active";
+    } else if (currentTime < openTimeInMinutes) {
+      statusElement.style.background = "#fef3c7";
+      statusElement.style.color = "#92400e";
+      statusElement.style.borderLeft = "4px solid #f59e0b";
+      statusElement.innerHTML = "⏱ Attendance window has not opened yet";
+    } else {
+      statusElement.style.background = "#fee2e2";
+      statusElement.style.color = "#991b1b";
+      statusElement.style.borderLeft = "4px solid #dc2626";
+      statusElement.innerHTML = "✕ Attendance window has closed for today";
+    }
+  }
+}
+
+function formatTime12Hour(time24) {
+  const [hours, minutes] = time24.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  return `${String(displayHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
 }
 
 if (adminClassForm) {
@@ -1696,6 +2098,57 @@ if (emergencyAlertForm) {
       }
     }
   });
+
+  // Attendance Settings Form
+  attendanceSettingsForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(attendanceSettingsForm);
+    const openTime = String(formData.get("openTime") || "").trim();
+    const closeTime = String(formData.get("closeTime") || "").trim();
+    const timezone = String(formData.get("timezone") || "Asia/Colombo").trim();
+
+    if (!openTime || !closeTime) {
+      alert("Please select both opening and closing times.");
+      return;
+    }
+
+    const submitButton = attendanceSettingsForm.querySelector(
+      'button[type="submit"]',
+    );
+    const originalText = submitButton
+      ? submitButton.textContent
+      : "Save Settings";
+
+    try {
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Saving...";
+      }
+
+      const result = await apiFetch(ATTENDANCE_SETTINGS_API, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          open_time: openTime,
+          close_time: closeTime,
+          timezone: timezone,
+        }),
+      });
+
+      alert("Attendance settings saved successfully!");
+      loadAttendanceSettings();
+    } catch (error) {
+      console.error("Attendance settings update failed:", error);
+      alert(error.message || "Failed to save attendance settings.");
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+      }
+    }
+  });
 }
 
 if (loadAttendanceReportButton) {
@@ -1737,12 +2190,51 @@ if (downloadAttendanceReportButton) {
 
 if (downloadTermReportButton) {
   downloadTermReportButton.addEventListener("click", () => {
-    if (!currentTermData || currentTermData.records.length === 0) {
-      alert("No term test data to download.");
+    if (!currentTermFilter) {
+      alert("Please run a term report filter before downloading CSV.");
       return;
     }
-    const csv = buildTermTestCsv(currentTermData.records);
-    downloadCsv("term_test_report.csv", csv);
+
+    const params = new URLSearchParams({
+      year: currentTermFilter.year,
+      grade: currentTermFilter.grade,
+      class: currentTermFilter.class,
+      term: currentTermFilter.term,
+      stream: currentTermFilter.stream || "",
+    });
+
+    // Fetch CSV with auth and trigger download
+    (async () => {
+      try {
+        const token = getToken();
+        if (!token) throw new Error("Authentication required.");
+        const resp = await fetch(
+          `/api/admin/reports/term-tests/csv?${params.toString()}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(text || "Failed to download CSV.");
+        }
+        const blob = await resp.blob();
+        const dispo = resp.headers.get("content-disposition") || "";
+        let filename = "term_test_report.csv";
+        const m = /filename="?([^";]+)"?/.exec(dispo);
+        if (m) filename = m[1];
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message || "Failed to download CSV.");
+      }
+    })();
   });
 }
 
@@ -1815,6 +2307,8 @@ if (attendanceFilterForm) {
         downloadAttendanceReportButton.style.display = "inline-block";
       }
 
+      setActiveReportCard("attendance");
+
       closeModal("attendanceFilterModal");
     } catch (error) {
       console.error("Load filtered attendance report failed:", error);
@@ -1862,10 +2356,20 @@ if (termFilterForm) {
       const data = await apiFetch(
         `${TERM_REPORT_FILTERED_API}?year=${year}&grade=${grade}&class=${classSection}&term=${term}&stream=${encodeURIComponent(termStream ? termStream.value : "")}`,
       );
+      // store active filter for CSV download
+      currentTermFilter = {
+        year,
+        grade,
+        class: classSection,
+        term,
+        stream: termStream ? termStream.value : "",
+      };
 
       currentTermData = {
         records: data.records || [],
         summary: data.summary || {},
+        pending_reviews: data.pending_reviews || [],
+        pending_count: data.pending_count || 0,
       };
 
       renderSummaryCards(termReportSummary, {
@@ -1874,18 +2378,19 @@ if (termFilterForm) {
         Distinctions: data.summary?.distinction_count || 0,
       });
 
-      renderList(
+      renderTermMarksTable(
         termReportList,
         data.records || [],
         "No term-test records found for this filter.",
-        (record) => {
-          return `${record.student_name} - ${record.subject_name} - ${record.mark}`;
-        },
       );
+
+      renderPendingApprovalsWidget(data);
 
       if (downloadTermReportButton && (data.records || []).length > 0) {
         downloadTermReportButton.style.display = "inline-block";
       }
+
+      setActiveReportCard("term");
 
       closeModal("termFilterModal");
     } catch (error) {
@@ -1913,21 +2418,43 @@ if (termFilterForm) {
 }
 
 tabButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    setActiveTab(button.dataset.tab);
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    activateSidebarTab(button.dataset.tab, { updateHash: true });
+
+    if (button.dataset.tab === "pending-approvals") {
+      loadPendingTermApprovals().catch((error) => {
+        console.error("Load pending term approvals failed:", error);
+        alert(error.message || "Failed to load pending term approvals.");
+      });
+    }
   });
 });
 
 updateSidebarGreetingByTime();
-setActiveTab("classes");
+activateSidebarTab("classes", { updateHash: false, scroll: false });
+
+const initialTab = window.location.hash.replace(/^#/, "");
+if (initialTab) {
+  activateSidebarTab(initialTab, { updateHash: false });
+
+  if (initialTab === "pending-approvals") {
+    loadPendingTermApprovals().catch((error) => {
+      console.error("Load pending term approvals failed:", error);
+      alert(error.message || "Failed to load pending term approvals.");
+    });
+  }
+}
 
 (async function initDashboard() {
   try {
-    await Promise.all([
+    await Promise.allSettled([
       loadDashboardMetrics(),
       loadTeachers(),
       loadClasses(),
       initializeClassDetailsFilters(),
+      loadAttendanceSettings(),
+      loadPendingTermApprovalCount(),
     ]);
 
     loadSubjectPlans().catch((error) => {
@@ -1948,5 +2475,50 @@ if (logoutBtn) {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminUser");
     window.location.href = "/";
+  });
+}
+
+// ========== Teacher Management Module Integration ==========
+// Initialize teacher management when the view-teachers tab is activated
+const teacherSearchInput = document.getElementById("teacherSearchInput");
+const teacherStatusFilter = document.getElementById("teacherStatusFilter");
+const exportTeachersBtn = document.getElementById("exportTeachersBtn");
+
+// Initialize teacher management on tab switch
+document.addEventListener("click", async (event) => {
+  const tabButton = event.target.closest(".admin-tab");
+  if (tabButton && tabButton.dataset.tab === "view-teachers") {
+    try {
+      await teacherMgmt.loadAllTeachers();
+      teacherMgmt.renderTeachersList(
+        document.getElementById("allTeachersList"),
+      );
+    } catch (error) {
+      console.error("Failed to load teachers:", error);
+      alert("Failed to load teachers. Please try again.");
+    }
+  }
+});
+
+// Search functionality
+if (teacherSearchInput) {
+  teacherSearchInput.addEventListener("input", (event) => {
+    teacherMgmt.searchTeachers(event.target.value);
+    teacherMgmt.renderTeachersList(document.getElementById("allTeachersList"));
+  });
+}
+
+// Status filter functionality
+if (teacherStatusFilter) {
+  teacherStatusFilter.addEventListener("change", (event) => {
+    teacherMgmt.filterByStatus(event.target.value);
+    teacherMgmt.renderTeachersList(document.getElementById("allTeachersList"));
+  });
+}
+
+// Export to CSV functionality
+if (exportTeachersBtn) {
+  exportTeachersBtn.addEventListener("click", () => {
+    teacherMgmt.exportToCSV();
   });
 }

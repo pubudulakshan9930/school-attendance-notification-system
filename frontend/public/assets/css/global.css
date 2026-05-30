@@ -18,7 +18,8 @@ body {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  font-family: "Poppins", sans-serif;
+  font-family:
+    "Google Sans Flex", "Patrick Hand", "Poppins", "Roboto", sans-serif;
   background: #ffffff;
   color: #0f172a;
 }
@@ -40,7 +41,8 @@ body.login-page {
     ),
     #eef2f7;
   color: var(--primary);
-  font-family: "Poppins", sans-serif;
+  font-family:
+    "Google Sans Flex", "Patrick Hand", "Poppins", "Roboto", sans-serif;
 }
 
 @media (max-width: 1024px) {

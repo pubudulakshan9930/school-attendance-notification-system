@@ -14,6 +14,12 @@ const termDisplay = document.getElementById("termDisplay");
 const totalStudentsDisplay = document.getElementById("totalStudents");
 const marksRecordedDisplay = document.getElementById("marksRecorded");
 const averageMarksDisplay = document.getElementById("averageMarks");
+const averageMarksLarge = document.getElementById("averageMarksLarge");
+const pendingCountDisplay = document.getElementById("pendingCount");
+const highestMarkDisplay = document.getElementById("highestMark");
+const highestStudentDisplay = document.getElementById("highestStudent");
+const studentCardsContainer = document.getElementById("studentCards");
+const studentCountText = document.getElementById("studentCountText");
 
 let subjects = [];
 
@@ -210,6 +216,8 @@ function displayMarks(data) {
 
   let marksTotal = 0;
   let marksRecorded = 0;
+  let highestMark = -1;
+  let highestStudentName = "";
 
   students.forEach((student) => {
     const markValue =
@@ -220,6 +228,10 @@ function displayMarks(data) {
     if (markValue !== null && Number.isFinite(markValue)) {
       marksTotal += markValue;
       marksRecorded += 1;
+      if (markValue > highestMark) {
+        highestMark = markValue;
+        highestStudentName = student.full_name || "";
+      }
     }
 
     const row = document.createElement("tr");
@@ -233,9 +245,74 @@ function displayMarks(data) {
 
   const average = marksRecorded > 0 ? marksTotal / marksRecorded : 0;
 
-  totalStudentsDisplay.textContent = String(students.length);
-  marksRecordedDisplay.textContent = String(marksRecorded);
-  averageMarksDisplay.textContent = `${average.toFixed(1)}%`;
+  if (totalStudentsDisplay) {
+    totalStudentsDisplay.textContent = String(students.length);
+  }
+  if (marksRecordedDisplay) {
+    marksRecordedDisplay.textContent = String(marksRecorded);
+  }
+  if (averageMarksDisplay) {
+    averageMarksDisplay.textContent = `${average.toFixed(1)}%`;
+  }
+  if (averageMarksLarge) {
+    averageMarksLarge.textContent = `${average.toFixed(1)} %`;
+  }
+
+  // pending: not marked / total
+  const pending = students.length - marksRecorded;
+  if (pendingCountDisplay) {
+    const pendingFormatted = String(pending).padStart(2, "0");
+    pendingCountDisplay.textContent = `${pendingFormatted} / ${students.length}`;
+  }
+
+  // highest
+  if (highestMarkDisplay) {
+    if (highestMark >= 0) {
+      highestMarkDisplay.textContent = `${highestMark} / 100`;
+    } else {
+      highestMarkDisplay.textContent = `0 / 100`;
+    }
+  }
+
+  if (highestStudentDisplay) {
+    highestStudentDisplay.textContent = highestStudentName;
+  }
+
+  // render student cards (compact list)
+  if (studentCardsContainer) {
+    studentCardsContainer.innerHTML = "";
+    students.forEach((student) => {
+      const markValue =
+        student.mark === null ||
+        student.mark === undefined ||
+        student.mark === ""
+          ? null
+          : Number(student.mark);
+
+      const initials = ((name) => {
+        if (!name) return "";
+        const parts = name.split(/\s+/).filter(Boolean);
+        return (parts[0][0] + (parts[1] ? parts[1][0] : "")).toUpperCase();
+      })(student.full_name);
+
+      const card = document.createElement("div");
+      card.className = "student-card";
+      card.innerHTML = `
+          <div class="student-avatar">${initials}</div>
+          <div class="student-info">
+            <div class="student-name">${student.full_name || "N/A"}</div>
+            <div class="student-id">ID: ${student.student_code || "-"}</div>
+          </div>
+          <div class="student-mark">${markValue === null ? "<strong>00</strong>" : `<strong>${markValue}</strong>`}</div>
+        `;
+
+      studentCardsContainer.appendChild(card);
+    });
+  }
+
+  if (studentCountText) {
+    studentCountText.textContent = `${students.length} Students`;
+  }
 
   marksContainer.style.display = "grid";
   noMarksMessage.style.display = "none";

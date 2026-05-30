@@ -7,6 +7,9 @@ const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 const teacherRoutes = require("./routes/teacher");
 const { isEmailConfigured } = require("./services/emailService");
+const {
+  startScheduler,
+} = require("./services/attendanceFinalizationScheduler");
 
 dotenv.config({ path: path.resolve(__dirname, ".env"), override: true });
 
@@ -44,4 +47,7 @@ app.listen(port, () => {
       `[DEBUG] Email host: ${process.env.EMAIL_HOST || "smtp.gmail.com"}, port: ${process.env.EMAIL_PORT || 587}`,
     );
   }
+
+  // Start attendance finalization scheduler
+  startScheduler();
 });

@@ -101,6 +101,33 @@ async function getStudentsByClass(db, classId) {
   return rows;
 }
 
+async function getStudentsBySubjectForClass(db, classId, subjectId) {
+  const query = `
+    SELECT
+      s.id,
+      s.full_name,
+      s.city,
+      s.address,
+      s.parent_name,
+      s.parent_phone,
+      s.parent_email,
+      s.student_code,
+      s.created_at,
+      sca.assigned_at
+    FROM student_class_assignments sca
+    JOIN students s ON s.id = sca.student_id
+    JOIN student_subjects ss ON ss.student_id = s.id
+    WHERE sca.class_id = $1
+      AND ss.subject_id = $2
+      AND sca.removed_at IS NULL
+      AND s.is_active = true
+    ORDER BY s.full_name ASC
+  `;
+
+  const { rows } = await db.query(query, [classId, subjectId]);
+  return rows;
+}
+
 async function getStudentMembershipInClass(db, classId, studentId) {
   const query = `
     SELECT s.id, s.full_name
@@ -869,7 +896,11 @@ async function saveSubjectTermMarksSpreadsheetForTeacher(
       throw error;
     }
 
-    const students = await getStudentsByClass(client, teacherClass.id);
+    const students = await getStudentsBySubjectForClass(
+      client,
+      teacherClass.id,
+      subjectId,
+    );
     const studentsById = new Map(
       students.map((student) => [String(student.id), student]),
     );
@@ -879,7 +910,9 @@ async function saveSubjectTermMarksSpreadsheetForTeacher(
     );
 
     if (expectedStudentIds.size === 0) {
-      const error = new Error("No students found in your class.");
+      const error = new Error(
+        "No students are registered for the selected subject.",
+      );
       error.statusCode = 400;
       throw error;
     }
@@ -899,7 +932,7 @@ async function saveSubjectTermMarksSpreadsheetForTeacher(
 
       if (!studentsById.has(studentIdValue)) {
         const error = new Error(
-          "One or more students do not belong to your class.",
+          "One or more students are not registered for the selected subject.",
         );
         error.statusCode = 400;
         throw error;
@@ -932,7 +965,7 @@ async function saveSubjectTermMarksSpreadsheetForTeacher(
         .map((student) => student.full_name);
 
       const error = new Error(
-        `Please include marks for every student in the class. Missing: ${missingStudents.join(", ")}`,
+        `Please include marks for every student registered for this subject. Missing: ${missingStudents.join(", ")}`,
       );
       error.statusCode = 400;
       throw error;
@@ -1096,6 +1129,9 @@ async function getSubjectMarksForTeacher(teacherId, subjectId, term) {
           tt.updated_at
         FROM student_class_assignments sca
         JOIN students s ON s.id = sca.student_id
+        JOIN student_subjects ss
+          ON ss.student_id = s.id
+         AND ss.subject_id = $4
         LEFT JOIN term_tests tt
           ON tt.student_id = s.id
           AND tt.class_id = sca.class_id
@@ -1212,6 +1248,7 @@ module.exports = {
   getTeacherCurrentClass,
   getTeacherProfile,
   getStudentsByClass,
+  getStudentsBySubjectForClass,
   getStudentMembershipInClass,
   getStudentSubjects,
   getClassSubjects,

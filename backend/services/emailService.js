@@ -266,16 +266,49 @@ function formatTermMarksEmail({
   };
 }
 
+function formatTermMarksSmsStyleEmail({
+  parentName,
+  studentName,
+  term,
+  className,
+  subjectMarks,
+}) {
+  const p = String(parentName || "Parent").trim();
+  const s = String(studentName || "student").trim();
+  const t = String(term || "term").trim();
+  const c = String(className || "class").trim();
+
+  const lines = Array.isArray(subjectMarks)
+    ? subjectMarks
+        .map((entry) => {
+          const subject = String(
+            entry?.name || entry?.subject || "Subject",
+          ).trim();
+          const mark = String(entry?.mark ?? "").trim();
+          return `${subject} - ${mark}`;
+        })
+        .filter(Boolean)
+    : [];
+
+  const message = [
+    `Dear ${p}, ${s}'s ${t} ${c} marks have been released.`,
+    ...lines,
+  ].join("\n");
+
+  return {
+    subject: `${s} ${t} marks released`,
+    text: message,
+    html: `<pre style="font-family: Arial, sans-serif; white-space: pre-wrap; color: #333;">${message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`,
+  };
+}
+
 async function sendTermMarksEmail({
   recipient,
   parentName,
   studentName,
-  studentCode,
   className,
-  academicYear,
   term,
-  classTeacher,
-  subjects,
+  subjectMarks,
 }) {
   if (!recipient || !recipient.includes("@")) {
     const error = new Error(
@@ -286,15 +319,12 @@ async function sendTermMarksEmail({
   }
 
   const transporter = createTransporter();
-  const emailContent = formatTermMarksEmail({
+  const emailContent = formatTermMarksSmsStyleEmail({
     parentName,
     studentName,
-    studentCode,
-    className,
-    academicYear,
     term,
-    classTeacher,
-    subjects,
+    className,
+    subjectMarks,
   });
 
   try {
@@ -302,6 +332,7 @@ async function sendTermMarksEmail({
       from: `"Sureki Academic System" <${requireEmailConfig().emailUser}>`,
       to: recipient,
       subject: emailContent.subject,
+      text: emailContent.text,
       html: emailContent.html,
       replyTo: process.env.EMAIL_REPLY_TO || undefined,
     });
@@ -319,6 +350,7 @@ async function sendTermMarksEmail({
 
 module.exports = {
   formatTermMarksEmail,
+  formatTermMarksSmsStyleEmail,
   sendTermMarksEmail,
   isEmailConfigured,
   requireEmailConfig,

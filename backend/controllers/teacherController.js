@@ -67,6 +67,73 @@ function buildStudentRegistrationTemplateCsv(plan) {
   return `${columns.map(escapeCsvValue).join(",")}\n`;
 }
 
+function buildSubjectMarksTemplateCsv(students) {
+  const lines = [["student_code", "mark"]];
+
+  for (const student of students || []) {
+    lines.push([String(student.student_code || ""), ""]);
+  }
+
+  return `${lines.map((row) => row.map(escapeCsvValue).join(",")).join("\n")}\n`;
+}
+
+async function sendRegistrationSmsNotification(student, classInfo) {
+  const streamLabel = getStreamLabel(classInfo.stream);
+  const className = streamLabel
+    ? `Grade ${classInfo.grade} ${streamLabel} Class ${classInfo.section}`
+    : `Grade ${classInfo.grade} Class ${classInfo.section}`;
+  const recipient = sanitizePhone(student.parent_phone);
+  const message = formatRegistrationSms({
+    parentName: student.parent_name,
+    studentName: student.full_name,
+    className,
+    studentCode: student.student_code,
+  });
+
+  if (!recipient) {
+    try {
+      await teacherRepository.insertNotificationLog({
+        studentId: student.id,
+        notificationType: "registration",
+        medium: "sms",
+        recipient: null,
+        message,
+        status: "failed: missing parent phone",
+      });
+    } catch (logErr) {
+      console.error("Notification log error (missing phone):", logErr);
+    }
+    return;
+  }
+
+  try {
+    await sendSms({ recipient, message });
+    await teacherRepository.insertNotificationLog({
+      studentId: student.id,
+      notificationType: "registration",
+      medium: "sms",
+      recipient,
+      message,
+      status: "sent",
+    });
+  } catch (smsErr) {
+    const failReason = smsErr?.message || "SMS provider error";
+    try {
+      await teacherRepository.insertNotificationLog({
+        studentId: student.id,
+        notificationType: "registration",
+        medium: "sms",
+        recipient,
+        message,
+        status: `failed: ${failReason}`,
+      });
+    } catch (logErr) {
+      console.error("Notification log error:", logErr);
+    }
+    console.error("Send registration SMS error:", smsErr);
+  }
+}
+
 async function bulkUploadStudents(req, res) {
   const csvFile = req.files?.csvFile;
 
@@ -114,28 +181,34 @@ async function bulkUploadStudents(req, res) {
           ]),
         };
 
-        await teacherRepository.createStudentForTeacher(req.user.userId, {
-          student_name: readSpreadsheetValue(row, ["Full Name", "full_name"]),
-          gender: readSpreadsheetValue(row, ["Gender", "gender"]),
-          student_code: readSpreadsheetValue(row, [
-            "Student ID",
-            "student_code",
-          ]),
-          parent_name: readSpreadsheetValue(row, [
-            "Parent Name",
-            "parent_name",
-          ]),
-          parent_phone: String(
-            readSpreadsheetValue(row, ["Parent Phone", "parent_phone"]),
-          ).trim(),
-          parent_email:
-            readSpreadsheetValue(row, ["Parent Email", "parent_email"]) || null,
-          city: readSpreadsheetValue(row, ["City", "city"]),
-          address: readSpreadsheetValue(row, ["Address", "address"]),
-          elective_subject_1: subjectData.elective_subject_1,
-          elective_subject_2: subjectData.elective_subject_2,
-          elective_subject_3: subjectData.elective_subject_3,
-        });
+        const result = await teacherRepository.createStudentForTeacher(
+          req.user.userId,
+          {
+            student_name: readSpreadsheetValue(row, ["Full Name", "full_name"]),
+            gender: readSpreadsheetValue(row, ["Gender", "gender"]),
+            student_code: readSpreadsheetValue(row, [
+              "Student ID",
+              "student_code",
+            ]),
+            parent_name: readSpreadsheetValue(row, [
+              "Parent Name",
+              "parent_name",
+            ]),
+            parent_phone: String(
+              readSpreadsheetValue(row, ["Parent Phone", "parent_phone"]),
+            ).trim(),
+            parent_email:
+              readSpreadsheetValue(row, ["Parent Email", "parent_email"]) ||
+              null,
+            city: readSpreadsheetValue(row, ["City", "city"]),
+            address: readSpreadsheetValue(row, ["Address", "address"]),
+            elective_subject_1: subjectData.elective_subject_1,
+            elective_subject_2: subjectData.elective_subject_2,
+            elective_subject_3: subjectData.elective_subject_3,
+          },
+        );
+
+        void sendRegistrationSmsNotification(result.student, result.class);
 
         registeredCount += 1;
       } catch (error) {
@@ -158,16 +231,12 @@ const {
   sanitizePhone,
   formatAttendanceSms,
   formatRegistrationSms,
-  formatTermMarksSms,
   sendSms,
 } = require("../services/smsService");
 const {
-  sendTermMarksEmail,
-  isEmailConfigured,
-} = require("../services/emailService");
-const {
   parseSubjectMarksSpreadsheetFile,
 } = require("../services/termMarksSpreadsheetService");
+const classTermMarksApprovalService = require("../services/classTermMarksApprovalService");
 const teacherRepository = require("../repositories/teacherRepository");
 const attendanceAlertService = require("../services/attendanceAlertService");
 const {
@@ -539,6 +608,93 @@ async function getTeacherClassRoster(req) {
   };
 }
 
+async function getTeacherSubjectRoster(req, subjectId) {
+  const teacherClass = await teacherRepository.getTeacherCurrentClass(
+    pool,
+    req.user.userId,
+  );
+
+  if (!teacherClass) {
+    const error = new Error("You are not assigned to an active class.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const subjectList = await teacherRepository.getClassSubjects(
+    pool,
+    teacherClass.id,
+  );
+  const selectedSubject = subjectList.find(
+    (item) => String(item.id) === String(subjectId),
+  );
+
+  if (!selectedSubject) {
+    const error = new Error(
+      "Selected subject does not belong to your active class.",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const students = await teacherRepository.getStudentsBySubjectForClass(
+    pool,
+    teacherClass.id,
+    subjectId,
+  );
+
+  return {
+    teacherClass,
+    subject: selectedSubject,
+    students,
+  };
+}
+
+async function getSubjectTermMarksTemplate(req, res) {
+  try {
+    const subjectId = String(
+      req.query.subject_id || req.query.subjectId || "",
+    ).trim();
+
+    if (!subjectId) {
+      return res.status(400).json({
+        success: false,
+        error: "subject_id is required.",
+      });
+    }
+
+    const { teacherClass, subject, students } = await getTeacherSubjectRoster(
+      req,
+      subjectId,
+    );
+    const csv = buildSubjectMarksTemplateCsv(students);
+    const subjectSlug = String(subject.name || "subject")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const fileName = `subject-marks-template-grade-${teacherClass.grade}-section-${teacherClass.section}-${subjectSlug || "subject"}.csv`;
+
+    return res
+      .status(200)
+      .setHeader("Content-Type", "text/csv; charset=utf-8")
+      .setHeader("Content-Disposition", `attachment; filename="${fileName}"`)
+      .send(csv);
+  } catch (error) {
+    console.error("Subject marks template error:", error);
+
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to generate subject marks template.",
+    });
+  }
+}
+
 async function previewSubjectTermMarksUpload(req, res) {
   try {
     const term = normalizeTerm(req.body.term);
@@ -569,32 +725,15 @@ async function previewSubjectTermMarksUpload(req, res) {
     }
 
     const parsed = parseSubjectMarksSpreadsheetFile(file);
-    const { teacherClass, students } = await getTeacherClassRoster(req);
+    const { subject, students } = await getTeacherSubjectRoster(req, subjectId);
     const summary = buildUploadRowSummary(parsed.rows, students);
-
-    const subjectMatch = await teacherRepository.getClassSubjects(
-      pool,
-      teacherClass.id,
-    );
-    const allowedSubject = subjectMatch.some(
-      (subject) => String(subject.id) === subjectId,
-    );
-
-    if (!allowedSubject) {
-      return res.status(400).json({
-        success: false,
-        error: "Selected subject does not belong to your active class.",
-      });
-    }
 
     return res.json({
       success: true,
       data: {
         term,
         subject_id: subjectId,
-        subject_name:
-          subjectMatch.find((subject) => String(subject.id) === subjectId)
-            ?.name || null,
+        subject_name: subject?.name || null,
         sheet_name: parsed.sheetName,
         total_rows: parsed.rows.length,
         preview_rows: summary.rows.slice(0, 10),
@@ -649,7 +788,7 @@ async function uploadSubjectTermMarksSpreadsheet(req, res) {
     }
 
     const parsed = parseSubjectMarksSpreadsheetFile(file);
-    const { teacherClass, students } = await getTeacherClassRoster(req);
+    const { students } = await getTeacherSubjectRoster(req, subjectId);
     const summary = buildUploadRowSummary(parsed.rows, students);
     const allErrors = [...parsed.errors, ...summary.errors];
 
@@ -661,20 +800,10 @@ async function uploadSubjectTermMarksSpreadsheet(req, res) {
       });
     }
 
-    const subjects = await teacherRepository.getClassSubjects(
-      pool,
-      teacherClass.id,
+    const { subject: selectedSubject } = await getTeacherSubjectRoster(
+      req,
+      subjectId,
     );
-    const selectedSubject = subjects.find(
-      (subject) => String(subject.id) === subjectId,
-    );
-
-    if (!selectedSubject) {
-      return res.status(400).json({
-        success: false,
-        error: "Selected subject does not belong to your active class.",
-      });
-    }
 
     const result =
       await teacherRepository.saveSubjectTermMarksSpreadsheetForTeacher(
@@ -817,62 +946,7 @@ async function registerStudent(req, res) {
       },
     );
     // Attempt to notify parent via SMS (best-effort)
-    (async () => {
-      const streamLabel = getStreamLabel(result.class.stream);
-      const className = streamLabel
-        ? `Grade ${result.class.grade} ${streamLabel} Class ${result.class.section}`
-        : `Grade ${result.class.grade} Class ${result.class.section}`;
-      const recipient = sanitizePhone(result.student.parent_phone);
-      const message = formatRegistrationSms({
-        parentName: result.student.parent_name,
-        studentName: result.student.full_name,
-        className,
-        studentCode: result.student.student_code,
-      });
-
-      if (!recipient) {
-        try {
-          await teacherRepository.insertNotificationLog({
-            studentId: result.student.id,
-            notificationType: "registration",
-            medium: "sms",
-            recipient: null,
-            message,
-            status: "failed: missing parent phone",
-          });
-        } catch (logErr) {
-          console.error("Notification log error (missing phone):", logErr);
-        }
-        return;
-      }
-
-      try {
-        await sendSms({ recipient, message });
-        await teacherRepository.insertNotificationLog({
-          studentId: result.student.id,
-          notificationType: "registration",
-          medium: "sms",
-          recipient,
-          message,
-          status: "sent",
-        });
-      } catch (smsErr) {
-        const failReason = smsErr?.message || "SMS provider error";
-        try {
-          await teacherRepository.insertNotificationLog({
-            studentId: result.student.id,
-            notificationType: "registration",
-            medium: "sms",
-            recipient,
-            message,
-            status: `failed: ${failReason}`,
-          });
-        } catch (logErr) {
-          console.error("Notification log error:", logErr);
-        }
-        console.error("Send registration SMS error:", smsErr);
-      }
-    })();
+    void sendRegistrationSmsNotification(result.student, result.class);
 
     return res.status(201).json({
       success: true,
@@ -1252,117 +1326,15 @@ async function saveStudentTermMarks(
       })),
     );
 
-    // Attempt to send email and SMS notifications to parent (best-effort)
-    (async () => {
-      const className = `Grade ${result.class.grade} Class ${result.class.section}`;
-      const recipient = result.student.parent_email;
-      const message = `Term marks saved for ${result.student.full_name}`;
-      const smsRecipient = sanitizePhone(result.student.parent_phone);
-      const smsMessage = formatTermMarksSms({
-        parentName: result.student.parent_name,
-        term: `Term ${normalizedTerm}`,
-        className,
-        subjectMarks: result.subjectMarks,
+    void classTermMarksApprovalService
+      .queueClassTermMarksForApproval({
+        classId: result.class.id,
+        term: normalizedTerm,
+        academicYear: result.class.academic_year,
+      })
+      .catch((error) => {
+        console.error("Queue class term approval error:", error);
       });
-      const emailConfigured = isEmailConfigured();
-
-      if (emailConfigured && recipient) {
-        try {
-          await sendTermMarksEmail({
-            recipient,
-            parentName: result.student.parent_name,
-            studentName: result.student.full_name,
-            studentCode: result.student.student_code,
-            className,
-            academicYear: result.class.academic_year,
-            term: normalizedTerm,
-            classTeacher: result.teacher?.name || null,
-            subjects: result.subjectMarks,
-          });
-
-          await teacherRepository.insertNotificationLog({
-            studentId: result.student.id,
-            notificationType: "term_test",
-            medium: "email",
-            recipient,
-            message,
-            status: "sent",
-          });
-        } catch (emailErr) {
-          const failReason = emailErr?.message || "Email service error";
-          try {
-            await teacherRepository.insertNotificationLog({
-              studentId: result.student.id,
-              notificationType: "term_test",
-              medium: "email",
-              recipient,
-              message,
-              status: `failed: ${failReason}`,
-            });
-          } catch (logErr) {
-            console.error("Notification log error:", logErr);
-          }
-          console.error("Send term marks email error:", emailErr);
-        }
-      } else {
-        try {
-          await teacherRepository.insertNotificationLog({
-            studentId: result.student.id,
-            notificationType: "term_test",
-            medium: "email",
-            recipient: recipient || "N/A",
-            message,
-            status: "failed: email service not configured",
-          });
-        } catch (logErr) {
-          console.error("Notification log error (missing email):", logErr);
-        }
-      }
-
-      if (!smsRecipient) {
-        try {
-          await teacherRepository.insertNotificationLog({
-            studentId: result.student.id,
-            notificationType: "term_test",
-            medium: "sms",
-            recipient: "N/A",
-            message: smsMessage,
-            status: "failed: missing parent phone number",
-          });
-        } catch (logErr) {
-          console.error("Notification log error (missing sms phone):", logErr);
-        }
-        return;
-      }
-
-      try {
-        await sendSms({ recipient: smsRecipient, message: smsMessage });
-
-        await teacherRepository.insertNotificationLog({
-          studentId: result.student.id,
-          notificationType: "term_test",
-          medium: "sms",
-          recipient: smsRecipient,
-          message: smsMessage,
-          status: "sent",
-        });
-      } catch (smsErr) {
-        const failReason = smsErr?.message || "SMS service error";
-        try {
-          await teacherRepository.insertNotificationLog({
-            studentId: result.student.id,
-            notificationType: "term_test",
-            medium: "sms",
-            recipient: smsRecipient,
-            message: smsMessage,
-            status: `failed: ${failReason}`,
-          });
-        } catch (logErr) {
-          console.error("Notification log error:", logErr);
-        }
-        console.error("Send term marks sms error:", smsErr);
-      }
-    })();
 
     return res.json({
       success: true,
@@ -1401,203 +1373,28 @@ async function saveSubjectTermMarks(
   marks,
 ) {
   try {
-    // Get teacher's class
-    const classResult = await teacherRepository.getTeacherCurrentClass(
-      pool,
-      req.user.userId,
-    );
-    if (!classResult) {
-      return res.status(400).json({
-        success: false,
-        error: "You are not assigned to an active class.",
-      });
-    }
-
-    const class_id = classResult.id;
-
-    // Verify subject belongs to the class
-    const subjectCheckResult = await pool.query(
-      `
-        SELECT id, name FROM subjects WHERE id = $1
-      `,
-      [subject_id],
-    );
-
-    if (subjectCheckResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "Subject not found.",
-      });
-    }
-
-    const subjectName = subjectCheckResult.rows[0].name;
-
-    // Get all students in the class
-    const studentsResult = await pool.query(
-      `
-        SELECT DISTINCT s.id, s.full_name, s.parent_email, s.parent_name, s.parent_phone, s.student_code
-        FROM student_class_assignments sca
-        JOIN students s ON s.id = sca.student_id
-        WHERE sca.class_id = $1
-          AND sca.removed_at IS NULL
-          AND s.is_active = true
-        ORDER BY s.full_name ASC
-      `,
-      [class_id],
-    );
-
-    if (studentsResult.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: "No students found in your class.",
-      });
-    }
-
-    const studentIds = new Set(studentsResult.rows.map((row) => row.id));
-    const studentMap = new Map(studentsResult.rows.map((row) => [row.id, row]));
-
-    // Validate marks
-    const markMap = new Map();
-    for (const entry of marks) {
-      const studentId = String(entry?.student_id || "").trim();
-      const markValue = Number(entry?.mark);
-
-      if (!studentId) {
-        return res.status(400).json({
-          success: false,
-          error: "Each mark must include student_id.",
-        });
-      }
-
-      if (markMap.has(studentId)) {
-        return res.status(400).json({
-          success: false,
-          error: "Duplicate student mark submission detected.",
-        });
-      }
-
-      if (!Number.isFinite(markValue) || markValue < 0 || markValue > 100) {
-        return res.status(400).json({
-          success: false,
-          error: "Marks must be numeric values between 0 and 100.",
-        });
-      }
-
-      if (!studentIds.has(studentId)) {
-        return res.status(400).json({
-          success: false,
-          error: "One or more students do not belong to your class.",
-        });
-      }
-
-      markMap.set(studentId, markValue);
-    }
-
-    if (markMap.size !== studentIds.size) {
-      return res.status(400).json({
-        success: false,
-        error: "Please enter marks for all students in the class.",
-      });
-    }
-
-    // Save marks
-    const upsertQuery = `
-      INSERT INTO term_tests (
-        student_id,
-        class_id,
-        term,
-        academic_year,
-        subject_id,
-        mark,
-        exam_date
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE)
-      ON CONFLICT (student_id, class_id, term, academic_year, subject_id)
-      DO UPDATE SET
-        mark = EXCLUDED.mark,
-        exam_date = EXCLUDED.exam_date,
-        updated_at = NOW()
-      RETURNING id, subject_id, mark
-    `;
-
-    const savedRows = [];
-    for (const entry of marks) {
-      const studentId = String(entry.student_id).trim();
-      const markValue = Number(entry.mark);
-
-      const result = await pool.query(upsertQuery, [
-        studentId,
-        class_id,
+    const saveResult =
+      await teacherRepository.saveSubjectTermMarksSpreadsheetForTeacher(
+        req.user.userId,
         normalizedTerm,
-        classResult.academic_year,
         subject_id,
-        markValue,
-      ]);
-      savedRows.push(result.rows[0]);
-    }
+        marks,
+      );
 
-    // Attempt to send notifications (best-effort)
-    (async () => {
-      const className = `Grade ${classResult.grade} Class ${classResult.section}`;
-      for (const student of studentsResult.rows) {
-        const mark = markMap.get(student.id);
-        const recipient = student.parent_email;
-        const message = `Term marks saved for ${student.full_name}`;
-        const smsRecipient = sanitizePhone(student.parent_phone);
-        const smsMessage = formatTermMarksSms({
-          parentName: student.parent_name,
-          term: `Term ${normalizedTerm}`,
-          className,
-          subjectMarks: [{ name: subjectName, mark }],
-        });
+    const classResult = saveResult.class;
+    const subjectResult = saveResult.subject;
+    const studentsResult = saveResult.students || [];
+    const savedRows = saveResult.savedRows || [];
 
-        const emailConfigured = isEmailConfigured();
-
-        if (emailConfigured && recipient) {
-          try {
-            await sendTermMarksEmail({
-              recipient,
-              parentName: student.parent_name,
-              studentName: student.full_name,
-              studentCode: student.student_code,
-              className,
-              academicYear: classResult.academic_year,
-              term: normalizedTerm,
-              classTeacher: classResult.teacher?.name || null,
-              subjects: [{ name: subjectName, mark }],
-            });
-
-            await teacherRepository.insertNotificationLog({
-              studentId: student.id,
-              notificationType: "term_test",
-              medium: "email",
-              recipient,
-              message,
-              status: "sent",
-            });
-          } catch (emailErr) {
-            console.error("Send term marks email error:", emailErr);
-          }
-        }
-
-        if (smsRecipient) {
-          try {
-            await sendSms({ recipient: smsRecipient, message: smsMessage });
-
-            await teacherRepository.insertNotificationLog({
-              studentId: student.id,
-              notificationType: "term_test",
-              medium: "sms",
-              recipient: smsRecipient,
-              message: smsMessage,
-              status: "sent",
-            });
-          } catch (smsErr) {
-            console.error("Send term marks sms error:", smsErr);
-          }
-        }
-      }
-    })();
+    void classTermMarksApprovalService
+      .queueClassTermMarksForApproval({
+        classId: classResult.id,
+        term: normalizedTerm,
+        academicYear: classResult.academic_year,
+      })
+      .catch((error) => {
+        console.error("Queue class term approval error:", error);
+      });
 
     return res.json({
       success: true,
@@ -1605,8 +1402,8 @@ async function saveSubjectTermMarks(
       data: {
         term: normalizedTerm,
         subject_id,
-        subject_name: subjectName,
-        class_id,
+        subject_name: subjectResult.name,
+        class_id: classResult.id,
         academic_year: classResult.academic_year,
         saved_count: savedRows.length,
         submitted_by: req.user.userId,
@@ -1626,10 +1423,6 @@ async function saveSubjectTermMarks(
       success: false,
       error: "Failed to save term marks.",
     });
-  } finally {
-    if (client) {
-      client.release();
-    }
   }
 }
 
@@ -1796,10 +1589,78 @@ async function updateTeacherProfile(req, res) {
   }
 }
 
+async function getAttendanceStatus(req, res) {
+  try {
+    const adminService = require("../services/adminService");
+
+    // Get attendance settings
+    const allSettings = await adminService.getAllSettings();
+    const openTime = allSettings.attendance_open_time || "07:30";
+    const closeTime = allSettings.attendance_close_time || "09:30";
+    const timezone = allSettings.attendance_timezone || "Asia/Colombo";
+
+    // Get current time
+    const now = new Date();
+    const currentHours = String(now.getHours()).padStart(2, "0");
+    const currentMinutes = String(now.getMinutes()).padStart(2, "0");
+    const currentTime = `${currentHours}:${currentMinutes}`;
+    const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Parse times
+    const [openHour, openMin] = openTime.split(":").map(Number);
+    const [closeHour, closeMin] = closeTime.split(":").map(Number);
+    const openTimeInMinutes = openHour * 60 + openMin;
+    const closeTimeInMinutes = closeHour * 60 + closeMin;
+
+    // Determine window status
+    let status = "closed";
+    let canMarkAttendance = false;
+    let canSaveAndNotify = false;
+
+    if (
+      currentTimeInMinutes >= openTimeInMinutes &&
+      currentTimeInMinutes < closeTimeInMinutes
+    ) {
+      status = "open";
+      canMarkAttendance = true;
+      canSaveAndNotify = false; // Can't send SMS before closing time
+    } else if (currentTimeInMinutes >= closeTimeInMinutes) {
+      status = "closed";
+      canMarkAttendance = false;
+      canSaveAndNotify = true; // Can send SMS after closing time
+    } else {
+      status = "not_started";
+      canMarkAttendance = false;
+      canSaveAndNotify = false;
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        status, // 'open', 'closed', 'not_started'
+        open_time: openTime,
+        close_time: closeTime,
+        current_time: currentTime,
+        timezone,
+        can_mark_attendance: canMarkAttendance,
+        can_send_sms: canSaveAndNotify,
+        time_to_close: closeTimeInMinutes - currentTimeInMinutes, // in minutes
+      },
+    });
+  } catch (error) {
+    console.error("Teacher fetch attendance status error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch attendance status.",
+    });
+  }
+}
+
 module.exports = {
   getDashboard,
   getTeacherProfile,
   getStudentRegistrationTemplate,
+  getSubjectTermMarksTemplate,
   getStudents,
   getClassDetails,
   getStudentSubjects,
@@ -1815,4 +1676,5 @@ module.exports = {
   processAttendanceAlerts,
   updateStudentDetails,
   updateTeacherProfile,
+  getAttendanceStatus,
 };
