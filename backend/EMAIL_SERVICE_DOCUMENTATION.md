@@ -9,7 +9,7 @@ The email service automatically sends formatted emails to parents when teachers 
 - **Automated Email Sending**: Emails are sent in the background when term marks are saved
 - **HTML Email Format**: Beautiful, responsive email template with professional styling
 - **Subject-wise Breakdown**: Displays each subject with marks out of 100
-- **Statistical Summary**: Shows total marks and average performance
+- **Statistical Summary**: Shows total marks and a subject-wise breakdown
 - **Error Handling**: Graceful error handling with notification logging
 - **Best-Effort Delivery**: Email failures don't block the API response
 
@@ -148,14 +148,17 @@ The email template includes:
    - Academic Year
    - Term
 
+- Class Teacher
+- Class Rank
+- Total Marks
+
 2. **Subject-wise Marks**
    - Table with all subjects and marks
    - Mark out of 100 for each subject
 
 3. **Performance Summary**
-   - Total marks across all subjects
-   - Average marks percentage
-   - Number of subjects
+
+- Total marks across all subjects
 
 4. **Other Details**
    - Class Teacher Name

@@ -12,6 +12,7 @@ const adminRepository = require("../repositories/adminRepository");
 const adminService = require("../services/adminService");
 const classTermMarksApprovalService = require("../services/classTermMarksApprovalService");
 const pool = require("../db");
+const adminAnalyticsRepository = require("../repositories/adminAnalyticsRepository");
 const {
   normalizeClassStream,
   getAllGradeSubjectPlans,
@@ -450,6 +451,193 @@ async function getAttendanceReport(req, res) {
   }
 }
 
+async function getAttendanceTrendAnalytics(req, res) {
+  try {
+    const rows =
+      await adminAnalyticsRepository.getAttendanceTrendLast30SchoolDays();
+
+    return res.json({
+      success: true,
+      data: {
+        series: rows.map((row) => ({
+          attendance_date:
+            row.attendance_date instanceof Date
+              ? row.attendance_date.toISOString().slice(0, 10)
+              : String(row.attendance_date || ""),
+          present_count: Number(row.present_count || 0),
+          late_count: Number(row.late_count || 0),
+          absent_count: Number(row.absent_count || 0),
+          total_students: Number(row.total_students || 0),
+          attendance_percentage: Number(row.attendance_percentage || 0),
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Admin attendance trend analytics error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load attendance analytics.",
+    });
+  }
+}
+
+async function getTodayAttendanceByGradeAnalytics(req, res) {
+  try {
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const rows =
+      await adminAnalyticsRepository.getTodayAttendanceByGrade(todayDate);
+
+    return res.json({
+      success: true,
+      data: {
+        report_date: todayDate,
+        series: rows.map((row) => ({
+          grade: Number(row.grade),
+          present_count: Number(row.present_count || 0),
+          late_count: Number(row.late_count || 0),
+          absent_count: Number(row.absent_count || 0),
+          total_students: Number(row.total_students || 0),
+          attendance_percentage: Number(row.attendance_percentage || 0),
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Admin attendance by grade analytics error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load attendance by grade analytics.",
+    });
+  }
+}
+
+async function getTodayAttendanceStatusDistributionAnalytics(req, res) {
+  try {
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const rows =
+      await adminAnalyticsRepository.getTodayAttendanceStatusDistribution(
+        todayDate,
+      );
+
+    const totalCount = rows.reduce(
+      (sum, row) => sum + Number(row.count || 0),
+      0,
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        report_date: todayDate,
+        total_count: totalCount,
+        series: rows.map((row) => ({
+          status: String(row.status || ""),
+          count: Number(row.count || 0),
+          percentage:
+            totalCount > 0
+              ? Number(((Number(row.count || 0) / totalCount) * 100).toFixed(2))
+              : 0,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Admin attendance status distribution analytics error:",
+      error,
+    );
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load attendance status distribution analytics.",
+    });
+  }
+}
+
+function normalizeAnalyticsFilterValue(value, parser) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsed = parser(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+async function getSubjectPerformanceFilterOptions(req, res) {
+  try {
+    const academicYear = normalizeAnalyticsFilterValue(
+      req.query.academic_year || req.query.academicYear,
+      (value) => Number(value),
+    );
+    const grade = normalizeAnalyticsFilterValue(req.query.grade, (value) =>
+      Number(value),
+    );
+
+    const filters =
+      await adminAnalyticsRepository.getSubjectPerformanceFilterOptions(
+        academicYear,
+        grade,
+      );
+
+    return res.json({
+      success: true,
+      data: {
+        academic_years: filters.academic_years || [],
+        grades: filters.grades || [],
+        classes: filters.classes || [],
+        terms: [
+          { value: 1, label: "First Term" },
+          { value: 2, label: "Second Term" },
+          { value: 3, label: "Third Term" },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error("Subject performance filter options error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load subject performance filters.",
+    });
+  }
+}
+
+async function getSubjectPerformanceAnalytics(req, res) {
+  try {
+    const academicYear = normalizeAnalyticsFilterValue(
+      req.query.academic_year || req.query.academicYear,
+      (value) => Number(value),
+    );
+    const grade = normalizeAnalyticsFilterValue(req.query.grade, (value) =>
+      Number(value),
+    );
+    const classId = String(
+      req.query.class_id || req.query.classId || "",
+    ).trim();
+    const term = normalizeAnalyticsFilterValue(req.query.term, (value) =>
+      Number(value),
+    );
+
+    const rows = await adminAnalyticsRepository.getSubjectPerformanceSeries(
+      academicYear,
+      grade,
+      classId,
+      term,
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        series: rows.map((row) => ({
+          subject: String(row.subject_name || ""),
+          average_marks: Number(row.average_marks || 0),
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Subject performance analytics error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load subject performance analytics.",
+    });
+  }
+}
+
 async function getTermTestReport(req, res) {
   try {
     await classTermMarksApprovalService.reconcileMissingClassTermReviews();
@@ -472,6 +660,78 @@ async function getTermTestReport(req, res) {
   } catch (error) {
     console.error("Admin term test report error:", error);
     return res.status(500).json({ error: "Internal server error." });
+  }
+}
+
+async function getTermMarksReviewDetail(req, res) {
+  try {
+    const classId = String(
+      req.query.class_id || req.query.classId || "",
+    ).trim();
+    const term = Number(req.query.term);
+    const academicYear = Number(
+      req.query.academic_year || req.query.academicYear,
+    );
+
+    if (!classId || !Number.isInteger(term) || !academicYear) {
+      return res.status(400).json({
+        success: false,
+        error: "class_id, term, and academic_year are required.",
+      });
+    }
+
+    const [snapshot, reviewResult] = await Promise.all([
+      classTermMarksApprovalService.getClassTermSnapshot(
+        classId,
+        term,
+        academicYear,
+      ),
+      pool.query(
+        `
+          SELECT
+            id,
+            class_id,
+            term,
+            academic_year,
+            review_status,
+            admin_notified_at,
+            admin_notification_error,
+            approved_by,
+            approved_at,
+            parent_sms_status,
+            parent_sms_sent_at,
+            parent_sms_error,
+            created_at,
+            updated_at
+          FROM term_class_marks_reviews
+          WHERE class_id = $1
+            AND term = $2
+            AND academic_year = $3
+          LIMIT 1
+        `,
+        [classId, term, academicYear],
+      ),
+    ]);
+
+    const review = reviewResult.rows[0] || null;
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        error: "Term marks review not found.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      review,
+      snapshot,
+    });
+  } catch (error) {
+    console.error("Admin term marks review detail error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load term marks review details.",
+    });
   }
 }
 
@@ -1465,7 +1725,13 @@ module.exports = {
   registerTeacher,
   updateTeacher,
   getAttendanceReport,
+  getAttendanceTrendAnalytics,
+  getTodayAttendanceByGradeAnalytics,
+  getTodayAttendanceStatusDistributionAnalytics,
+  getSubjectPerformanceFilterOptions,
+  getSubjectPerformanceAnalytics,
   getTermTestReport,
+  getTermMarksReviewDetail,
   getTermTestReportCsv,
   approveTermMarks,
   getFilteredAttendanceReport,

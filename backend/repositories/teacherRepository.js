@@ -376,22 +376,15 @@ async function createStudentForTeacher(teacherId, payload) {
     }
 
     const studentName = String(payload.student_name || "").trim();
-    const gender = payload.gender ? String(payload.gender).trim() : "";
+    const gender = payload.gender ? String(payload.gender).trim() : null;
     const parentName = String(payload.parent_name || "").trim();
     const parentPhone = String(payload.parent_phone || "").trim();
     const city = String(payload.city || "").trim();
     const address = String(payload.address || "").trim();
 
-    if (
-      !studentName ||
-      !gender ||
-      !parentName ||
-      !parentPhone ||
-      !city ||
-      !address
-    ) {
+    if (!studentName || !parentName || !parentPhone || !city || !address) {
       const error = new Error(
-        "Full name, gender, parent name, parent phone, city, and address are required.",
+        "Full name, parent name, parent phone, city, and address are required.",
       );
       error.statusCode = 400;
       throw error;

@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../assets/css/global.css" />
     <link rel="stylesheet" href="../assets/css/components.css" />
     <link rel="stylesheet" href="./admin.css" />
+    <link rel="stylesheet" href="./analytics/attendance-trend.css" />
   </head>
 
   <body>
@@ -71,6 +72,9 @@
               </a>
               <a class="admin-tab" href="#reports" data-tab="reports">
                 Get Report
+              </a>
+              <a class="admin-tab" href="#analytics" data-tab="analytics">
+                Analytics
               </a>
               <a
                 class="admin-tab"
@@ -202,9 +206,23 @@
                   <div class="panel-card">
                     <div class="panel-copy">
                       <h3>Created Classes</h3>
-                      <p>Active class list for the current school year.</p>
+                      <p>Class list for the current school year.</p>
                     </div>
-                    <ul id="adminClassesList" class="result-list"></ul>
+                    <div class="table-responsive">
+                      <table class="teachers-table classes-table">
+                        <thead>
+                          <tr>
+                            <th>Year</th>
+                            <th>Grade</th>
+                            <th>Class</th>
+                            <th>Teacher Name</th>
+                            <th>Student Count</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody id="adminClassesList"></tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -654,6 +672,183 @@
 
               <section
                 class="admin-panel"
+                id="analytics"
+                data-panel="analytics"
+              >
+                <div class="panel-grid panel-grid-two">
+                  <div class="panel-card analytics-overview-card">
+                    <div class="panel-copy">
+                      <h2>Attendance Analytics</h2>
+                      <p>
+                        View the overall daily attendance percentage for the
+                        last 30 school days. Weekends are excluded and inactive
+                        students are ignored in the calculation.
+                      </p>
+                    </div>
+                    <div class="analytics-metrics">
+                      <span class="analytics-chip"
+                        >Present + Late / Total Active Students</span
+                      >
+                      <span class="analytics-chip analytics-chip-secondary"
+                        >Last 30 school days</span
+                      >
+                    </div>
+                  </div>
+
+                  <div class="panel-card analytics-chart-card">
+                    <div class="analytics-chart-header">
+                      <div>
+                        <h3>School Attendance Trend (Last 30 School Days)</h3>
+                        <p id="attendanceTrendCaption">
+                          Chart loads when this panel opens.
+                        </p>
+                      </div>
+                      <span id="attendanceTrendStatus" class="analytics-status"
+                        >Waiting to load</span
+                      >
+                    </div>
+                    <div class="analytics-chart-wrap">
+                      <canvas
+                        id="attendanceTrendChart"
+                        aria-label="School attendance trend chart"
+                        role="img"
+                      ></canvas>
+                    </div>
+                  </div>
+
+                  <div class="panel-card analytics-chart-card">
+                    <div class="analytics-chart-header">
+                      <div>
+                        <h3>Today's Attendance by Grade</h3>
+                        <p id="attendanceByGradeCaption">
+                          Chart loads when this panel opens.
+                        </p>
+                      </div>
+                      <span
+                        id="attendanceByGradeStatus"
+                        class="analytics-status"
+                        >Waiting to load</span
+                      >
+                    </div>
+                    <div class="analytics-chart-wrap">
+                      <canvas
+                        id="attendanceByGradeChart"
+                        aria-label="Today's attendance by grade chart"
+                        role="img"
+                      ></canvas>
+                    </div>
+                  </div>
+
+                  <div class="panel-card analytics-chart-card">
+                    <div class="analytics-chart-header">
+                      <div>
+                        <h3>Today's Attendance Status Distribution</h3>
+                        <p id="attendanceStatusDistributionCaption">
+                          Chart loads when this panel opens.
+                        </p>
+                      </div>
+                      <span
+                        id="attendanceStatusDistributionStatus"
+                        class="analytics-status"
+                        >Waiting to load</span
+                      >
+                    </div>
+                    <div class="analytics-chart-wrap">
+                      <div
+                        id="attendanceStatusDistributionLoading"
+                        class="analytics-state-layer is-hidden"
+                      >
+                        <div class="analytics-state-content">
+                          <div class="analytics-spinner"></div>
+                          <span>Loading attendance distribution…</span>
+                        </div>
+                      </div>
+                      <div
+                        id="attendanceStatusDistributionEmptyState"
+                        class="analytics-state-layer is-hidden"
+                      >
+                        <div
+                          class="analytics-state-content analytics-empty-state"
+                        >
+                          <span>No attendance data available</span>
+                        </div>
+                      </div>
+                      <canvas
+                        id="attendanceStatusDistributionChart"
+                        aria-label="Today's attendance status distribution chart"
+                        role="img"
+                      ></canvas>
+                    </div>
+                  </div>
+
+                  <div class="panel-card analytics-chart-card">
+                    <div class="analytics-chart-header">
+                      <div>
+                        <h3>Average Subject Marks</h3>
+                        <p id="subjectPerformanceCaption">
+                          Select filters to load the subject chart.
+                        </p>
+                      </div>
+                      <span
+                        id="subjectPerformanceStatus"
+                        class="analytics-status"
+                        >Waiting to load</span
+                      >
+                    </div>
+                    <div class="subject-performance-filters">
+                      <div class="analytics-filter-group">
+                        <label for="subjectPerformanceAcademicYear"
+                          >Academic Year</label
+                        >
+                        <select id="subjectPerformanceAcademicYear"></select>
+                      </div>
+                      <div class="analytics-filter-group">
+                        <label for="subjectPerformanceGrade">Grade</label>
+                        <select id="subjectPerformanceGrade"></select>
+                      </div>
+                      <div class="analytics-filter-group">
+                        <label for="subjectPerformanceClass">Class</label>
+                        <select id="subjectPerformanceClass"></select>
+                      </div>
+                      <div class="analytics-filter-group">
+                        <label for="subjectPerformanceTerm">Term</label>
+                        <select id="subjectPerformanceTerm"></select>
+                      </div>
+                    </div>
+                    <div
+                      class="analytics-chart-wrap subject-performance-chart-wrap"
+                    >
+                      <div
+                        id="subjectPerformanceLoading"
+                        class="analytics-state-layer is-hidden"
+                      >
+                        <div class="analytics-state-content">
+                          <div class="analytics-spinner"></div>
+                          <span>Loading subject data…</span>
+                        </div>
+                      </div>
+                      <div
+                        id="subjectPerformanceEmptyState"
+                        class="analytics-state-layer is-hidden"
+                      >
+                        <div
+                          class="analytics-state-content analytics-empty-state"
+                        >
+                          <span>No subject performance data available</span>
+                        </div>
+                      </div>
+                      <canvas
+                        id="subjectPerformanceChart"
+                        aria-label="Average subject marks chart"
+                        role="img"
+                      ></canvas>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                class="admin-panel"
                 id="pending-approvals"
                 data-panel="pending-approvals"
               >
@@ -665,11 +860,7 @@
                 </div>
 
                 <div class="panel-card report-card">
-                  <div
-                    id="pendingApprovalsSummary"
-                    class="report-summary"
-                  ></div>
-                  <ul id="pendingApprovalsList" class="result-list"></ul>
+                  <div id="pendingApprovalsList"></div>
                 </div>
               </section>
             </div>
@@ -1060,6 +1251,14 @@
     <script src="../assets/js/class-stream-utils.js"></script>
     <script src="./teacherManagement.js"></script>
     <script src="./studentManagement.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script type="module" src="./analytics/attendance-trend.js"></script>
+    <script type="module" src="./analytics/attendance-by-grade.js"></script>
+    <script
+      type="module"
+      src="./analytics/attendance-status-distribution.js"
+    ></script>
+    <script type="module" src="./analytics/subject-performance.js"></script>
     <script src="./admin.js"></script>
   </body>
   <script>

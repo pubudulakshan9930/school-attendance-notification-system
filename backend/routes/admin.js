@@ -35,6 +35,26 @@ router.get("/alerts", adminController.getAlerts);
 // Reporting - Attendance
 router.get("/reports/attendance", adminController.getAttendanceReport);
 router.get(
+  "/analytics/attendance-trend",
+  adminController.getAttendanceTrendAnalytics,
+);
+router.get(
+  "/analytics/attendance-by-grade",
+  adminController.getTodayAttendanceByGradeAnalytics,
+);
+router.get(
+  "/analytics/attendance-status-distribution",
+  adminController.getTodayAttendanceStatusDistributionAnalytics,
+);
+router.get(
+  "/analytics/subject-performance/filters",
+  adminController.getSubjectPerformanceFilterOptions,
+);
+router.get(
+  "/analytics/subject-performance",
+  adminController.getSubjectPerformanceAnalytics,
+);
+router.get(
   "/reports/attendance/range",
   adminController.getAttendanceReportRange,
 );
@@ -51,6 +71,10 @@ router.get("/reports/term-tests", adminController.getTermTestReport);
 router.get(
   "/reports/term-tests/filtered",
   adminController.getFilteredTermTestReport,
+);
+router.get(
+  "/reports/term-tests/review",
+  adminController.getTermMarksReviewDetail,
 );
 router.get("/reports/term-tests/csv", adminController.getTermTestReportCsv);
 router.post("/term-marks/approve", adminController.approveTermMarks);

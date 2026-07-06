@@ -57,7 +57,6 @@ async function getActiveClasses() {
     FROM classes c
     LEFT JOIN users u ON u.id = c.teacher_id
     LEFT JOIN student_class_assignments sca ON sca.class_id = c.id AND sca.removed_at IS NULL
-    WHERE c.is_active = true
     GROUP BY c.id, u.full_name
     ORDER BY c.academic_year DESC, c.grade ASC, c.stream ASC, c.section ASC
   `;

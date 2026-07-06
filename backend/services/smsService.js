@@ -82,6 +82,8 @@ function formatTermMarksSms({
   studentName,
   term,
   className,
+  studentRank,
+  totalMark,
   subjectMarks,
 }) {
   const p = String(parentName || "Parent").trim();
@@ -102,8 +104,10 @@ function formatTermMarksSms({
     : [];
 
   const header = `Dear ${p}, ${s}'s ${t} ${c} marks have been released.`;
+  const rankLine = `Class Rank: ${studentRank ?? "N/A"}`;
+  const totalLine = `Total Marks: ${totalMark ?? "N/A"}`;
 
-  return [header, ...lines].join("\n");
+  return [header, rankLine, totalLine, ...lines].join("\n");
 }
 
 function formatEmergencyAlertSms({ alertTitle, alertBody }) {

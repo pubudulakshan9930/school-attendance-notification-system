@@ -37,6 +37,147 @@ function createTransporter() {
   });
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildTermMarksEmailTemplate({
+  title,
+  subtitle,
+  parentName,
+  studentName,
+  studentCode,
+  className,
+  academicYear,
+  termName,
+  classTeacher,
+  studentRank,
+  totalMark,
+  subjectRows,
+  closingNote,
+}) {
+  const safeParentName = escapeHtml(parentName || "Parent");
+  const safeStudentName = escapeHtml(studentName || "N/A");
+  const safeStudentCode = escapeHtml(studentCode || "N/A");
+  const safeClassName = escapeHtml(className || "N/A");
+  const safeAcademicYear = escapeHtml(academicYear || "N/A");
+  const safeTermName = escapeHtml(termName || "N/A");
+  const safeClassTeacher = escapeHtml(classTeacher || "N/A");
+  const safeStudentRank = escapeHtml(studentRank ?? "N/A");
+  const safeTotalMark = escapeHtml(totalMark ?? "N/A");
+  const safeTitle = escapeHtml(title || "Term Marks Results");
+  const safeSubtitle = escapeHtml(subtitle || "");
+  const safeClosingNote = escapeHtml(closingNote || "");
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>${safeTitle}</title>
+      </head>
+      <body style="margin:0;padding:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f3f6fb;padding:24px 12px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:720px;background:#ffffff;border:1px solid #dbe3ef;border-radius:10px;overflow:hidden;">
+                <tr>
+                  <td style="background:linear-gradient(135deg,#10223d 0%,#1a3a52 100%);padding:24px 28px;color:#ffffff;">
+                    <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.82;margin-bottom:8px;">${safeTitle}</div>
+                    <div style="font-size:26px;line-height:1.2;font-weight:700;margin:0 0 6px;">${safeStudentName}</div>
+                    <div style="font-size:14px;line-height:1.5;opacity:0.95;">${safeSubtitle}</div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:24px 28px 8px;">
+                    <div style="font-size:15px;line-height:1.7;color:#334155;">
+                      Dear <strong style="color:#10223d;">${safeParentName}</strong>,
+                      <div style="margin-top:8px;">Please find the ${safeTermName} results for your child below.</div>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:12px 28px 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;border:1px solid #dbe3ef;border-radius:8px;overflow:hidden;">
+                      <tr>
+                        <td style="width:50%;padding:12px 14px;background:#f8fbff;border-bottom:1px solid #dbe3ef;color:#10223d;font-weight:700;">Student Name</td>
+                        <td style="padding:12px 14px;background:#ffffff;border-bottom:1px solid #dbe3ef;color:#334155;">${safeStudentName}</td>
+                      </tr>
+                      <tr>
+                        <td style="width:50%;padding:12px 14px;background:#f8fbff;border-bottom:1px solid #dbe3ef;color:#10223d;font-weight:700;">Student Code</td>
+                        <td style="padding:12px 14px;background:#ffffff;border-bottom:1px solid #dbe3ef;color:#334155;">${safeStudentCode}</td>
+                      </tr>
+                      <tr>
+                        <td style="width:50%;padding:12px 14px;background:#f8fbff;border-bottom:1px solid #dbe3ef;color:#10223d;font-weight:700;">Class</td>
+                        <td style="padding:12px 14px;background:#ffffff;border-bottom:1px solid #dbe3ef;color:#334155;">${safeClassName}</td>
+                      </tr>
+                      <tr>
+                        <td style="width:50%;padding:12px 14px;background:#f8fbff;border-bottom:1px solid #dbe3ef;color:#10223d;font-weight:700;">Academic Year</td>
+                        <td style="padding:12px 14px;background:#ffffff;border-bottom:1px solid #dbe3ef;color:#334155;">${safeAcademicYear}</td>
+                      </tr>
+                      <tr>
+                        <td style="width:50%;padding:12px 14px;background:#f8fbff;border-bottom:1px solid #dbe3ef;color:#10223d;font-weight:700;">Term</td>
+                        <td style="padding:12px 14px;background:#ffffff;border-bottom:1px solid #dbe3ef;color:#334155;">${safeTermName}</td>
+                      </tr>
+                      <tr>
+                        <td style="width:50%;padding:12px 14px;background:#f8fbff;border-bottom:1px solid #dbe3ef;color:#10223d;font-weight:700;">Class Teacher</td>
+                        <td style="padding:12px 14px;background:#ffffff;border-bottom:1px solid #dbe3ef;color:#334155;">${safeClassTeacher}</td>
+                      </tr>
+                      <tr>
+                        <td style="width:50%;padding:12px 14px;background:#f8fbff;border-bottom:1px solid #dbe3ef;color:#10223d;font-weight:700;">Class Rank</td>
+                        <td style="padding:12px 14px;background:#ffffff;border-bottom:1px solid #dbe3ef;color:#334155;">${safeStudentRank}</td>
+                      </tr>
+                      <tr>
+                        <td style="width:50%;padding:12px 14px;background:#f8fbff;color:#10223d;font-weight:700;">Total Marks</td>
+                        <td style="padding:12px 14px;background:#ffffff;color:#334155;">${safeTotalMark}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:24px 28px 10px;">
+                    <div style="font-size:18px;font-weight:700;color:#10223d;margin-bottom:10px;">Subject-wise Marks</div>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;border:1px solid #dbe3ef;border-radius:8px;overflow:hidden;">
+                      <tr>
+                        <th align="left" style="padding:12px 14px;background:#10223d;color:#ffffff;font-size:13px;letter-spacing:0.02em;">Subject</th>
+                        <th align="center" style="padding:12px 14px;background:#10223d;color:#ffffff;font-size:13px;letter-spacing:0.02em;">Mark</th>
+                      </tr>
+                      ${subjectRows}
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:20px 28px 28px;">
+                    <div style="font-size:13px;line-height:1.7;color:#64748b;">${safeClosingNote}</div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:16px 28px;background:#f8fafc;border-top:1px solid #dbe3ef;color:#64748b;font-size:12px;line-height:1.6;">
+                    <div style="font-weight:700;color:#10223d;">Sureki Academic Management System</div>
+                    <div>This is an automated email. Please do not reply to this message.</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+}
+
 function formatTermMarksEmail({
   parentName,
   studentName,
@@ -45,6 +186,8 @@ function formatTermMarksEmail({
   academicYear,
   term,
   classTeacher,
+  studentRank,
+  totalMark,
   subjects,
 }) {
   const termName =
@@ -65,200 +208,22 @@ function formatTermMarksEmail({
     )
     .join("");
 
-  const totalMarks = subjects.reduce(
-    (sum, s) => sum + (Number(s.mark) || 0),
-    0,
-  );
-  const averageMark =
-    subjects.length > 0 ? (totalMarks / subjects.length).toFixed(2) : 0;
-
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-          }
-          .container {
-            max-width: 600px;
-            margin: 0 auto;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          }
-          .header {
-            background: linear-gradient(135deg, #10223d 0%, #1a3a52 100%);
-            color: white;
-            padding: 20px;
-            text-align: center;
-          }
-          .header h1 {
-            margin: 0;
-            font-size: 24px;
-          }
-          .content {
-            padding: 25px;
-          }
-          .greeting {
-            font-size: 16px;
-            margin-bottom: 20px;
-            color: #333;
-          }
-          .info-section {
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            border-left: 4px solid #10223d;
-          }
-          .info-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e0e0e0;
-          }
-          .info-item:last-child {
-            border-bottom: none;
-          }
-          .info-label {
-            font-weight: bold;
-            color: #10223d;
-            min-width: 150px;
-          }
-          .info-value {
-            color: #555;
-          }
-          .marks-table {
-            width: 100%;
-            margin: 20px 0;
-            border-collapse: collapse;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          }
-          .marks-table thead {
-            background: #10223d;
-            color: white;
-          }
-          .marks-table th {
-            padding: 12px;
-            text-align: left;
-            font-weight: bold;
-          }
-          .marks-table td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-          }
-          .marks-table tbody tr:hover {
-            background: #f5f5f5;
-          }
-          .summary {
-            background: #f0f8ff;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-            border-left: 4px solid #10223d;
-          }
-          .summary-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            font-weight: bold;
-          }
-          .footer {
-            background: #f5f5f5;
-            padding: 15px;
-            text-align: center;
-            color: #777;
-            font-size: 12px;
-            border-top: 1px solid #ddd;
-          }
-          .footer p {
-            margin: 5px 0;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>📋 Term Test Results</h1>
-            <p>Academic Year ${academicYear}</p>
-          </div>
-          
-          <div class="content">
-            <div class="greeting">
-              <p>Dear <strong>${parentName}</strong>,</p>
-              <p>Please find below the ${termName} test results for your child.</p>
-            </div>
-
-            <div class="info-section">
-              <div class="info-item">
-                <span class="info-label">Student Name:</span>
-                <span class="info-value"><strong>${studentName}</strong></span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Student Code:</span>
-                <span class="info-value">${studentCode}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Class:</span>
-                <span class="info-value">${className}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Class Teacher:</span>
-                <span class="info-value">${classTeacher}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Term:</span>
-                <span class="info-value">${termName}</span>
-              </div>
-            </div>
-
-            <h3 style="color: #10223d; margin-top: 25px; margin-bottom: 10px;">Subject-wise Marks</h3>
-            <table class="marks-table">
-              <thead>
-                <tr>
-                  <th>Subject</th>
-                  <th style="text-align: center;">Marks</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${subjectRows}
-              </tbody>
-            </table>
-
-            <div class="summary">
-              <div class="summary-item">
-                <span>Total Marks:</span>
-                <span>${totalMarks}/100</span>
-              </div>
-              <div class="summary-item">
-                <span>Average:</span>
-                <span>${averageMark}%</span>
-              </div>
-              <div class="summary-item">
-                <span>Number of Subjects:</span>
-                <span>${subjects.length}</span>
-              </div>
-            </div>
-
-            <p style="color: #666; font-size: 14px; margin-top: 20px;">
-              If you have any queries regarding these marks, please contact your child's class teacher or the school administration.
-            </p>
-          </div>
-
-          <div class="footer">
-            <p><strong>Sureki Academic Management System</strong></p>
-            <p>This is an automated email. Please do not reply to this message.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const htmlContent = buildTermMarksEmailTemplate({
+    title: "Term Test Results",
+    subtitle: `Academic Year ${academicYear}`,
+    parentName,
+    studentName,
+    studentCode,
+    className,
+    academicYear,
+    termName,
+    classTeacher,
+    studentRank,
+    totalMark,
+    subjectRows,
+    closingNote:
+      "If you have any queries regarding these marks, please contact your child's class teacher or the school administration.",
+  });
 
   return {
     subject: `${studentName} - ${termName} Test Results (Academic Year ${academicYear})`,
@@ -269,8 +234,13 @@ function formatTermMarksEmail({
 function formatTermMarksSmsStyleEmail({
   parentName,
   studentName,
+  studentCode,
+  academicYear,
   term,
   className,
+  classTeacher,
+  studentRank,
+  totalMark,
   subjectMarks,
 }) {
   const p = String(parentName || "Parent").trim();
@@ -292,13 +262,42 @@ function formatTermMarksSmsStyleEmail({
 
   const message = [
     `Dear ${p}, ${s}'s ${t} ${c} marks have been released.`,
+    `Class Rank: ${studentRank ?? "N/A"}`,
+    `Total Marks: ${totalMark ?? "N/A"}`,
     ...lines,
   ].join("\n");
+
+  const htmlRows = lines
+    .map((line) => {
+      const [subject, mark] = line.split(" - ");
+      return `
+        <tr>
+          <td style="padding:12px 14px;border-bottom:1px solid #dbe3ef;color:#334155;">${escapeHtml(subject)}</td>
+          <td style="padding:12px 14px;border-bottom:1px solid #dbe3ef;color:#334155;text-align:center;font-weight:700;">${escapeHtml(mark)}</td>
+        </tr>
+      `;
+    })
+    .join("");
 
   return {
     subject: `${s} ${t} marks released`,
     text: message,
-    html: `<pre style="font-family: Arial, sans-serif; white-space: pre-wrap; color: #333;">${message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`,
+    html: buildTermMarksEmailTemplate({
+      title: "Term Marks Results",
+      subtitle: `Academic Year ${academicYear || "N/A"}`,
+      parentName: p,
+      studentName: s,
+      studentCode,
+      className: c,
+      academicYear,
+      termName: t,
+      classTeacher,
+      studentRank,
+      totalMark,
+      subjectRows: htmlRows,
+      closingNote:
+        "This message was generated automatically by Sureki Academic Management System.",
+    }),
   };
 }
 
@@ -306,8 +305,13 @@ async function sendTermMarksEmail({
   recipient,
   parentName,
   studentName,
+  studentCode,
+  academicYear,
   className,
+  classTeacher,
   term,
+  studentRank,
+  totalMark,
   subjectMarks,
 }) {
   if (!recipient || !recipient.includes("@")) {
@@ -322,8 +326,13 @@ async function sendTermMarksEmail({
   const emailContent = formatTermMarksSmsStyleEmail({
     parentName,
     studentName,
+    studentCode,
+    academicYear,
     term,
     className,
+    classTeacher,
+    studentRank,
+    totalMark,
     subjectMarks,
   });
 

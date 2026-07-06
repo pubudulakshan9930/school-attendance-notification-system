@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en" class="admin-font-smaller">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Term Marks Review</title>
+    <link rel="stylesheet" href="../assets/css/global.css" />
+    <link rel="stylesheet" href="../assets/css/components.css" />
+    <link rel="stylesheet" href="./admin.css" />
+    <style>
+      body {
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(16, 34, 61, 0.08),
+            transparent 35%
+          ),
+          linear-gradient(180deg, #f6f8fc 0%, #eef3f9 100%);
+      }
+
+      .review-shell {
+        min-height: 100vh;
+        padding: 1.5rem 0 2rem;
+      }
+
+      .review-page-card {
+        padding: 1.5rem;
+      }
+
+      .review-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(16, 34, 61, 0.08);
+      }
+
+      .review-eyebrow {
+        margin: 0 0 0.35rem;
+        color: #5a6c7d;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.95rem;
+        font-weight: 700;
+      }
+
+      .review-title {
+        margin: 0;
+        color: #10223d;
+        font-size: 1.35rem;
+        line-height: 1.2;
+        text-align: left;
+      }
+
+      .review-subtitle {
+        margin: 0.4rem 0 0;
+        color: #5a6c7d;
+        font-size: 0.9rem;
+      }
+
+      .review-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      .review-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .review-metric {
+        background: #fff;
+        border: 1px solid rgba(16, 34, 61, 0.1);
+        border-radius: 14px;
+        padding: 0.9rem 1rem;
+      }
+
+      .review-metric span {
+        display: block;
+        color: #5a6c7d;
+        font-size: 0.82rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .review-metric strong {
+        color: #10223d;
+        font-size: 1rem;
+      }
+
+      .review-alert {
+        margin-bottom: 1rem;
+        color: #8b1e1e;
+        font-weight: 600;
+      }
+
+      .subject-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .subject-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(16, 34, 61, 0.08);
+        color: #10223d;
+        font-weight: 600;
+      }
+
+      .review-table-wrap {
+        margin-top: 0.25rem;
+      }
+
+      .review-table td.marks-cell {
+        text-align: center;
+      }
+
+      .review-table .rank-column {
+        width: 72px;
+      }
+
+      .review-table .total-column {
+        width: 110px;
+      }
+
+      .review-table .student-column {
+        min-width: 220px;
+      }
+
+      .review-footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1rem;
+        padding-top: 0.25rem;
+      }
+
+      .review-approve-button {
+        width: auto;
+        margin-top: 0;
+        padding: 0.45rem 0.85rem;
+        min-height: 2rem;
+        line-height: 1.1;
+        border-radius: 0.35rem;
+      }
+
+      @media (max-width: 720px) {
+        .review-page-card {
+          padding: 1rem;
+        }
+
+        .review-header {
+          flex-direction: column;
+        }
+
+        .review-actions,
+        .review-footer {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="review-shell">
+      <section class="container-wide">
+        <article class="panel-card review-page-card">
+          <div class="review-header">
+            <div>
+              <p class="review-eyebrow">Pending approval review</p>
+              <h1 id="reviewTitle" class="review-title">Loading review...</h1>
+              <p id="reviewSubtitle" class="review-subtitle"></p>
+            </div>
+
+            <div class="review-actions">
+              <a
+                class="btn btn-secondary"
+                href="dashbaord-admin.html#pending-approvals"
+              >
+                Back to pending approvals
+              </a>
+              <button
+                id="approveButton"
+                type="button"
+                class="btn btn-primary pending-action-button review-approve-button"
+                style="display: none"
+              >
+                Approve term marks
+              </button>
+            </div>
+          </div>
+
+          <div id="reviewAlert" class="review-alert"></div>
+
+          <div id="reviewMetrics" class="review-metrics"></div>
+
+          <div id="subjectChips" class="subject-chips"></div>
+
+          <div id="tableWrap" class="table-responsive review-table-wrap"></div>
+
+          <div class="review-footer">
+            <button
+              id="secondaryApproveButton"
+              type="button"
+              class="btn btn-primary pending-action-button review-approve-button"
+              style="display: none"
+            >
+              Approve term marks
+            </button>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="../assets/js/admin-auth.js"></script>
+    <script src="./term-approval-review.js"></script>
+  </body>
+</html>

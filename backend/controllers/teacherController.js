@@ -20,6 +20,10 @@ function readSpreadsheetValue(row, aliases) {
   return "";
 }
 
+function readStudentSpreadsheetValue(row, aliases) {
+  return readSpreadsheetValue(row, aliases);
+}
+
 function loadStudentRegistrationWorkbook(file) {
   const XLSX = require("xlsx");
   const path = require("path");
@@ -184,24 +188,53 @@ async function bulkUploadStudents(req, res) {
         const result = await teacherRepository.createStudentForTeacher(
           req.user.userId,
           {
-            student_name: readSpreadsheetValue(row, ["Full Name", "full_name"]),
-            gender: readSpreadsheetValue(row, ["Gender", "gender"]),
-            student_code: readSpreadsheetValue(row, [
-              "Student ID",
-              "student_code",
+            student_name: readStudentSpreadsheetValue(row, [
+              "Full Name",
+              "Student Name",
+              "student_name",
+              "full_name",
+              "name",
             ]),
-            parent_name: readSpreadsheetValue(row, [
+            gender: readStudentSpreadsheetValue(row, [
+              "Gender",
+              "gender",
+              "sex",
+            ]),
+            student_code: readStudentSpreadsheetValue(row, [
+              "Student ID",
+              "Student Code",
+              "student_code",
+              "student_id",
+              "id",
+            ]),
+            parent_name: readStudentSpreadsheetValue(row, [
               "Parent Name",
+              "Guardian Name",
               "parent_name",
+              "guardian_name",
             ]),
             parent_phone: String(
-              readSpreadsheetValue(row, ["Parent Phone", "parent_phone"]),
+              readStudentSpreadsheetValue(row, [
+                "Parent Phone",
+                "Phone Number",
+                "parent_phone",
+                "parent_mobile",
+                "contact_number",
+              ]),
             ).trim(),
             parent_email:
-              readSpreadsheetValue(row, ["Parent Email", "parent_email"]) ||
-              null,
-            city: readSpreadsheetValue(row, ["City", "city"]),
-            address: readSpreadsheetValue(row, ["Address", "address"]),
+              readStudentSpreadsheetValue(row, [
+                "Parent Email",
+                "Email",
+                "parent_email",
+              ]) || null,
+            city: readStudentSpreadsheetValue(row, ["City", "city", "town"]),
+            address: readStudentSpreadsheetValue(row, [
+              "Address",
+              "Home Address",
+              "address",
+              "residence",
+            ]),
             elective_subject_1: subjectData.elective_subject_1,
             elective_subject_2: subjectData.elective_subject_2,
             elective_subject_3: subjectData.elective_subject_3,

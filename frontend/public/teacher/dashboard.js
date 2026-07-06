@@ -210,12 +210,31 @@ function renderSubjectSelectionForm() {
   const plan =
     subjectPlan || getClassSubjectPlan(teacherClass.grade, teacherClass.stream);
   if (!plan) {
-    subjectSelection.innerHTML =
-      '<p style="color: #666;">No subject plan configured for this class.</p>';
+    subjectSelection.innerHTML = `
+      <div class="subject-selection-empty">
+        <div class="subject-selection-empty-icon">📚</div>
+        <div>
+          <h4>No subject plan configured</h4>
+          <p>The current class does not have a subject plan yet.</p>
+        </div>
+      </div>
+    `;
     return;
   }
 
-  let html = "";
+  let html = `
+    <div class="subject-selection-panel">
+      <div class="subject-selection-header">
+        <div>
+          <p class="subject-selection-kicker">Select Subject</p>
+          <h4 class="subject-selection-title">Class subject plan</h4>
+        </div>
+        <div class="subject-selection-badge">
+          Grade ${teacherClass.grade}${teacherClass.stream ? ` • ${getStreamLabel(teacherClass.stream) || teacherClass.stream}` : ""}
+        </div>
+      </div>
+  `;
+
   let mandatorySectionHtml = "";
   const mandatoryEntries = getMandatorySubjectEntries(plan);
   const mandatorySubjects = mandatoryEntries.filter(
@@ -223,9 +242,22 @@ function renderSubjectSelectionForm() {
   );
   if (mandatoryEntries.length > 0) {
     mandatorySectionHtml = `
-      <div class="subject-group">
-        <div style="padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 0.9rem; margin-bottom: 10px;">
-          ${mandatorySubjects.map((entry) => entry.name).join(", ")}
+      <div class="subject-selection-section">
+        <div class="subject-selection-section-header">
+          <span class="subject-selection-section-title">Mandatory subjects</span>
+          <span class="subject-selection-section-note">Auto-assigned</span>
+        </div>
+        <div class="subject-chip-list">
+          ${mandatorySubjects
+            .map(
+              (entry) => `
+                <span class="subject-chip">
+                  <span class="subject-chip-dot"></span>
+                  <span>${entry.name}</span>
+                </span>
+              `,
+            )
+            .join("")}
         </div>
       </div>
     `;
@@ -236,8 +268,14 @@ function renderSubjectSelectionForm() {
     .filter((group) => Array.isArray(group.options) && group.options.length > 0)
     .map(
       (group) => `
-        <div class="subject-group">
-          <label for="${group.key}">${group.label} *</label>
+        <div class="subject-selection-section subject-selection-card">
+          <div class="subject-selection-section-header">
+            <span class="subject-selection-section-title">${group.label}</span>
+            <span class="subject-selection-section-note">Required</span>
+          </div>
+          <label class="subject-selection-label" for="${group.key}">
+            Choose one subject from this category
+          </label>
           <select id="${group.key}" name="${group.key}" required>
             <option value="">Select from ${group.label}</option>
             ${group.options.map((opt) => `<option value="${opt}">${opt}</option>`).join("")}
@@ -247,7 +285,7 @@ function renderSubjectSelectionForm() {
     )
     .join("");
 
-  html += mandatorySectionHtml + electiveSectionHtml;
+  html += mandatorySectionHtml + electiveSectionHtml + "</div>";
   subjectSelection.innerHTML = html;
 }
 

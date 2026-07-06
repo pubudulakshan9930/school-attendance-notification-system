@@ -92,10 +92,18 @@ async function getClassTermSnapshot(classId, term, academicYear) {
 
   const classResult = await pool.query(
     `
-      SELECT id, grade, section, stream, academic_year, teacher_id
-      FROM classes
-      WHERE id = $1
-        AND academic_year = $2
+      SELECT
+        c.id,
+        c.grade,
+        c.section,
+        c.stream,
+        c.academic_year,
+        c.teacher_id,
+        u.full_name AS teacher_name
+      FROM classes c
+      LEFT JOIN users u ON u.id = c.teacher_id
+      WHERE c.id = $1
+        AND c.academic_year = $2
       LIMIT 1
     `,
     [classId, academicYear],
@@ -193,7 +201,38 @@ async function getClassTermSnapshot(classId, term, academicYear) {
   const subjects = Array.from(subjectsMap.values()).sort((a, b) =>
     a.subject_name.localeCompare(b.subject_name),
   );
-  const students = Array.from(studentsMap.values());
+  const students = Array.from(studentsMap.values())
+    .map((student) => {
+      const totalMark = Object.values(student.marks).reduce(
+        (sum, mark) => sum + (Number.isFinite(Number(mark)) ? Number(mark) : 0),
+        0,
+      );
+
+      return {
+        ...student,
+        total_mark: totalMark,
+      };
+    })
+    .sort((left, right) => {
+      if (left.total_mark !== right.total_mark) {
+        return right.total_mark - left.total_mark;
+      }
+
+      const nameComparison = left.student_name.localeCompare(
+        right.student_name,
+      );
+      if (nameComparison !== 0) {
+        return nameComparison;
+      }
+
+      return String(left.student_code || "").localeCompare(
+        String(right.student_code || ""),
+      );
+    })
+    .map((student, index) => ({
+      ...student,
+      rank: index + 1,
+    }));
 
   const complete =
     students.length > 0 &&
@@ -560,18 +599,22 @@ async function approveClassTermMarks({
         student.parentPhone ||
         student.parent_phone_number,
     );
+    const subjectMarks = (
+      Array.isArray(student.assigned_subject_names)
+        ? student.assigned_subject_names
+        : snapshot.subjects.map((s) => s.subject_name)
+    ).map((subjectName) => ({
+      name: subjectName,
+      mark: student.marks ? student.marks[subjectName] : null,
+    }));
     const message = formatTermMarksSms({
       parentName: student.parent_name,
       studentName: student.student_name,
       term: `Term ${snapshot.term}`,
       className: buildClassLabel(snapshot.classInfo),
-      subjectMarks: (Array.isArray(student.assigned_subject_names)
-        ? student.assigned_subject_names
-        : snapshot.subjects.map((s) => s.subject_name)
-      ).map((subjectName) => ({
-        name: subjectName,
-        mark: student.marks ? student.marks[subjectName] : null,
-      })),
+      studentRank: student.rank,
+      totalMark: student.total_mark,
+      subjectMarks,
     });
 
     if (!parentPhone) {
@@ -619,15 +662,14 @@ async function approveClassTermMarks({
           recipient: parentEmail,
           parentName: student.parent_name,
           studentName: student.student_name,
+          studentCode: student.student_code,
+          academicYear: snapshot.academicYear,
           className: buildClassLabel(snapshot.classInfo),
+          classTeacher: snapshot.classInfo?.teacher_name || "Class Teacher",
           term: `Term ${snapshot.term}`,
-          subjectMarks: (Array.isArray(student.assigned_subject_names)
-            ? student.assigned_subject_names
-            : snapshot.subjects.map((s) => s.subject_name)
-          ).map((subjectName) => ({
-            name: subjectName,
-            mark: student.marks ? student.marks[subjectName] : null,
-          })),
+          studentRank: student.rank,
+          totalMark: student.total_mark,
+          subjectMarks,
         });
 
         emailSentCount += 1;

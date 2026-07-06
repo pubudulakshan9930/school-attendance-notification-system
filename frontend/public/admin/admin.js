@@ -41,10 +41,8 @@ const attendanceReportList = document.getElementById("attendanceReportList");
 const attendanceStream = document.getElementById("attendanceStream");
 const termReportSummary = document.getElementById("termReportSummary");
 const termReportList = document.getElementById("termReportList");
-const pendingApprovalsSummary = document.getElementById(
-  "pendingApprovalsSummary",
-);
 const pendingApprovalsList = document.getElementById("pendingApprovalsList");
+const pendingApprovalsBadge = document.getElementById("pendingApprovalsBadge");
 const termStream = document.getElementById("termStream");
 const loadAttendanceReportButton = document.getElementById(
   "loadAttendanceReport",
@@ -56,7 +54,6 @@ const downloadAttendanceReportButton = document.getElementById(
 const downloadTermReportButton = document.getElementById("downloadTermReport");
 const attendanceReportCard = document.getElementById("attendanceReportCard");
 const termReportCard = document.getElementById("termReportCard");
-const pendingApprovalsBadge = document.getElementById("pendingApprovalsBadge");
 const loadSubjectPlansButton = document.getElementById("loadSubjectPlans");
 const subjectPlansBoard = document.getElementById("subjectPlansBoard");
 const sidebarGreeting = document.getElementById("sidebarGreeting");
@@ -632,109 +629,124 @@ function updatePendingApprovalsBadge(count) {
   pendingApprovalsBadge.style.display = safeCount > 0 ? "inline-flex" : "none";
 }
 
-function renderPendingTermReviews(container, items, emptyMessage, onApprove) {
+function renderPendingTermReviews(
+  container,
+  items,
+  emptyMessage,
+  onReview,
+  onApprove,
+) {
   if (!container) {
     return;
   }
 
   container.innerHTML = "";
   if (!items || items.length === 0) {
-    const emptyItem = document.createElement("li");
+    const emptyItem = document.createElement("div");
+    emptyItem.className = "result-list-empty";
     emptyItem.textContent = emptyMessage;
     container.appendChild(emptyItem);
     return;
   }
 
-  items.forEach((item) => {
-    const card = document.createElement("li");
-    card.className = "panel-card";
-    card.style.listStyle = "none";
-    card.style.padding = "1rem";
-    card.style.marginBottom = "1rem";
+  const tableWrapper = document.createElement("div");
+  tableWrapper.className = "table-responsive";
 
-    const title = document.createElement("h4");
-    title.style.margin = "0 0 0.5rem 0";
-    title.style.color = "#10223d";
-    title.textContent = `${item.class_label || formatClassLabel(item.class_info || item)} - Term ${item.term} (${item.academic_year})`;
+  const table = document.createElement("table");
+  table.className = "term-marks-table pending-approvals-table";
 
-    const meta = document.createElement("p");
-    meta.style.margin = "0 0 0.75rem 0";
-    meta.style.color = "#5a6c7d";
-    meta.textContent = `${(item.students || []).length} student(s) | ${(item.subjects || []).length} subject(s)`;
-
-    const tableWrap = document.createElement("div");
-    tableWrap.style.overflowX = "auto";
-
-    const table = document.createElement("table");
-    table.className = "approval-table";
-    table.style.width = "100%";
-    table.style.borderCollapse = "collapse";
-    table.style.minWidth = "720px";
-
-    const thead = document.createElement("thead");
-    const headRow = document.createElement("tr");
-    const studentHead = document.createElement("th");
-    studentHead.textContent = "Student";
-    studentHead.style.textAlign = "left";
-    headRow.appendChild(studentHead);
-
-    (item.subjects || []).forEach((subject) => {
-      const th = document.createElement("th");
-      th.textContent = subject.subject_name;
-      th.style.textAlign = "center";
-      headRow.appendChild(th);
-    });
-    thead.appendChild(headRow);
-    table.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    (item.students || []).forEach((student) => {
-      const row = document.createElement("tr");
-      const nameCell = document.createElement("td");
-      nameCell.textContent = `${student.student_name} (${student.student_code || "N/A"})`;
-      row.appendChild(nameCell);
-
-      (item.subjects || []).forEach((subject) => {
-        const td = document.createElement("td");
-        td.style.textAlign = "center";
-        const mark = student.marks?.[subject.subject_name];
-        td.textContent = Number.isFinite(Number(mark)) ? String(mark) : "-";
-        row.appendChild(td);
-      });
-
-      tbody.appendChild(row);
-    });
-    table.appendChild(tbody);
-    tableWrap.appendChild(table);
-
-    const actions = document.createElement("div");
-    actions.style.marginTop = "0.75rem";
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "btn btn-primary";
-    button.textContent = "Approve Class Term";
-    button.addEventListener("click", () => onApprove(item, button));
-    actions.appendChild(button);
-
-    card.appendChild(title);
-    card.appendChild(meta);
-    card.appendChild(tableWrap);
-    card.appendChild(actions);
-    container.appendChild(card);
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  ["Year", "Grade", "Class", "Term", "Actions"].forEach((columnName) => {
+    const th = document.createElement("th");
+    th.textContent = columnName;
+    headerRow.appendChild(th);
   });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  items.forEach((item) => {
+    const row = document.createElement("tr");
+
+    const classInfo = item.class_info || {};
+    const className =
+      String(classInfo.section || classInfo.stream || "-").trim() || "-";
+
+    const yearCell = document.createElement("td");
+    yearCell.textContent = String(item.academic_year || "-");
+    row.appendChild(yearCell);
+
+    const gradeCell = document.createElement("td");
+    gradeCell.textContent = classInfo.grade ? `Grade ${classInfo.grade}` : "-";
+    row.appendChild(gradeCell);
+
+    const classCell = document.createElement("td");
+    classCell.textContent = className;
+    row.appendChild(classCell);
+
+    const termCell = document.createElement("td");
+    termCell.textContent = `Term ${item.term}`;
+    row.appendChild(termCell);
+
+    const actionWrap = document.createElement("div");
+    actionWrap.style.display = "inline-flex";
+    actionWrap.style.flexWrap = "nowrap";
+    actionWrap.style.gap = "0.4rem";
+    actionWrap.style.alignItems = "center";
+    actionWrap.style.whiteSpace = "nowrap";
+
+    const reviewButton = document.createElement("button");
+    reviewButton.type = "button";
+    reviewButton.className = "btn btn-secondary pending-action-button";
+    reviewButton.textContent = "Review";
+    reviewButton.addEventListener("click", () => onReview(item, reviewButton));
+    actionWrap.appendChild(reviewButton);
+
+    const approveButton = document.createElement("button");
+    approveButton.type = "button";
+    approveButton.className = "btn btn-primary pending-action-button";
+    approveButton.textContent = "Approve";
+    approveButton.addEventListener("click", () =>
+      onApprove(item, approveButton),
+    );
+    actionWrap.appendChild(approveButton);
+
+    const actionsCell = document.createElement("td");
+    actionsCell.style.verticalAlign = "middle";
+    actionsCell.style.textAlign = "center";
+    actionsCell.appendChild(actionWrap);
+    row.appendChild(actionsCell);
+
+    tbody.appendChild(row);
+  });
+
+  table.appendChild(tbody);
+  tableWrapper.appendChild(table);
+  container.appendChild(tableWrapper);
 }
 
 function renderPendingApprovalsWidget(data) {
-  if (pendingApprovalsSummary) {
-    renderSummaryCards(pendingApprovalsSummary, {
-      "Pending approvals": data.pending_count || 0,
-    });
-  }
-
   renderPendingTermReviews(
     pendingApprovalsList,
     data.pending_reviews || [],
     "No pending term approvals.",
+    (review) => {
+      if (!review?.class_id || !review?.term || !review?.academic_year) {
+        alert("Review record is incomplete.");
+        return;
+      }
+
+      const reviewUrl = new URL(
+        "/admin/term-approval-review.html",
+        window.location.origin,
+      );
+      reviewUrl.searchParams.set("class_id", review.class_id);
+      reviewUrl.searchParams.set("term", review.term);
+      reviewUrl.searchParams.set("academic_year", review.academic_year);
+      window.open(reviewUrl.toString(), "_blank", "noopener,noreferrer");
+    },
     async (review, button) => {
       if (!review?.class_id || !review?.term || !review?.academic_year) {
         alert("Approval record is incomplete.");
@@ -1531,76 +1543,50 @@ async function loadClasses() {
 
   adminClassesList.innerHTML = "";
   if (classes.length === 0) {
-    const emptyItem = document.createElement("li");
-    emptyItem.textContent = "No classes created yet.";
-    adminClassesList.appendChild(emptyItem);
+    const emptyRow = document.createElement("tr");
+    const emptyCell = document.createElement("td");
+    emptyCell.colSpan = 6;
+    emptyCell.textContent = "No classes created yet.";
+    emptyRow.appendChild(emptyCell);
+    adminClassesList.appendChild(emptyRow);
     return;
   }
 
   classes.forEach((classItem) => {
-    const isTaken = Boolean(classItem.teacher_id);
-    const classLabel = `Grade ${classItem.grade} ${formatClassLabel(classItem)} (${classItem.academic_year})`;
+    const row = document.createElement("tr");
 
-    const listItem = document.createElement("li");
-    listItem.className = `class-status-item ${isTaken ? "class-taken" : "class-open"}`;
+    const yearCell = document.createElement("td");
+    yearCell.textContent = String(classItem.academic_year || "");
 
-    const header = document.createElement("div");
-    header.className = "class-status-header";
+    const gradeCell = document.createElement("td");
+    gradeCell.textContent = String(classItem.grade || "");
 
-    const title = document.createElement("strong");
-    title.className = "class-status-title";
-    title.textContent = classLabel;
+    const classCell = document.createElement("td");
+    classCell.textContent = formatClassLabel(classItem);
 
-    const badge = document.createElement("span");
-    badge.className = `class-status-badge ${isTaken ? "class-status-badge-taken" : "class-status-badge-open"}`;
-    badge.textContent = isTaken ? "Taken" : "Not Taken";
+    const teacherCell = document.createElement("td");
+    teacherCell.textContent = classItem.teacher_name || "Not assigned";
 
-    header.appendChild(title);
-    header.appendChild(badge);
+    const studentCountCell = document.createElement("td");
+    studentCountCell.textContent = String(Number(classItem.student_count || 0));
 
-    const meta = document.createElement("div");
-    meta.className = "class-status-meta";
-    const studentCount = classItem.student_count || 0;
-    meta.textContent = `Students: ${studentCount}/${classItem.max_students || 40} | Teacher: ${classItem.teacher_name || "Not assigned"}`;
+    const statusCell = document.createElement("td");
+    statusCell.className = "teacher-status";
 
-    const actions = document.createElement("div");
-    actions.className = "class-status-actions";
+    const statusBadge = document.createElement("span");
+    statusBadge.className = `status-badge status-${classItem.is_active ? "active" : "inactive"}`;
+    statusBadge.textContent = classItem.is_active ? "Active" : "Not Active";
 
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.className = "class-remove-button";
-    removeButton.dataset.classId = classItem.id;
-    removeButton.dataset.classLabel = classLabel;
-    removeButton.textContent = "Remove class";
+    statusCell.appendChild(statusBadge);
 
-    actions.appendChild(removeButton);
+    row.appendChild(yearCell);
+    row.appendChild(gradeCell);
+    row.appendChild(classCell);
+    row.appendChild(teacherCell);
+    row.appendChild(studentCountCell);
+    row.appendChild(statusCell);
 
-    listItem.appendChild(header);
-    listItem.appendChild(meta);
-    listItem.appendChild(actions);
-    adminClassesList.appendChild(listItem);
-  });
-}
-
-if (adminClassesList) {
-  adminClassesList.addEventListener("click", async (event) => {
-    const removeButton = event.target.closest("button[data-class-id]");
-    if (!removeButton || !adminClassesList.contains(removeButton)) {
-      return;
-    }
-
-    try {
-      removeButton.disabled = true;
-      await removeClass(
-        removeButton.dataset.classId,
-        removeButton.dataset.classLabel || "this class",
-      );
-    } catch (error) {
-      console.error("Delete class failed:", error);
-      alert(error.message || "Failed to remove class.");
-    } finally {
-      removeButton.disabled = false;
-    }
+    adminClassesList.appendChild(row);
   });
 }
 

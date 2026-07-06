@@ -652,6 +652,56 @@ html {
   color: #1e293b;
 }
 
+.result-list-empty {
+  padding: 14px 16px;
+  border-radius: 4px;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #1e293b;
+}
+
+.pending-approvals-table th,
+.pending-approvals-table td {
+  vertical-align: middle !important;
+}
+
+.pending-approvals-table th,
+.pending-approvals-table td {
+  font-size: 0.8rem;
+  line-height: 1.15;
+}
+
+.pending-approvals-table th,
+.pending-approvals-table td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.pending-approvals-table th:nth-child(4),
+.pending-approvals-table th:nth-child(5),
+.pending-approvals-table td:nth-child(4),
+.pending-approvals-table td:nth-child(5) {
+  text-align: center;
+}
+
+.pending-approvals-table td:nth-child(5) {
+  white-space: nowrap;
+}
+
+.pending-action-button {
+  width: auto;
+  margin-top: 0;
+  padding: 3px 8px;
+  font-size: inherit;
+  line-height: inherit;
+  min-height: 22px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
 .table-responsive {
   overflow-x: auto;
   margin-top: 18px;
@@ -674,6 +724,8 @@ html {
   text-align: left;
   vertical-align: top;
   white-space: nowrap;
+  font-size: 0.8rem;
+  line-height: 1.15;
 }
 
 .term-marks-table thead th {
@@ -688,6 +740,11 @@ html {
 
 .term-marks-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.term-marks-table.pending-approvals-table th,
+.term-marks-table.pending-approvals-table td {
+  vertical-align: middle;
 }
 
 .class-status-item {
@@ -1061,14 +1118,16 @@ html {
   padding: 14px 16px;
   text-align: left;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.15;
   border-bottom: 2px solid #10223d;
 }
 
 .teachers-table td {
   padding: 14px 16px;
   border-bottom: 1px solid #e5e7eb;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
+  line-height: 1.15;
 }
 
 .teachers-table tbody tr {
@@ -1127,14 +1186,16 @@ html {
   padding: 14px 16px;
   text-align: left;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.15;
   border-bottom: 2px solid #10223d;
 }
 
 .students-table td {
   padding: 14px 16px;
   border-bottom: 1px solid #e5e7eb;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
+  line-height: 1.15;
   vertical-align: top;
 }
 
@@ -1323,11 +1384,11 @@ html {
 
 @media (max-width: 1024px) {
   .teachers-table {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 
   .students-table {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 
   .teachers-table th,
