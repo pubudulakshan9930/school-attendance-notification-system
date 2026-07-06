@@ -210,12 +210,31 @@ function renderSubjectSelectionForm() {
   const plan =
     subjectPlan || getClassSubjectPlan(teacherClass.grade, teacherClass.stream);
   if (!plan) {
-    subjectSelection.innerHTML =
-      '<p style="color: #666;">No subject plan configured for this class.</p>';
+    subjectSelection.innerHTML = `
+      <div class="subject-selection-empty">
+        <div class="subject-selection-empty-icon">📚</div>
+        <div>
+          <h4>No subject plan configured</h4>
+          <p>The current class does not have a subject plan yet.</p>
+        </div>
+      </div>
+    `;
     return;
   }
 
-  let html = "";
+  let html = `
+    <div class="subject-selection-panel">
+      <div class="subject-selection-header">
+        <div>
+          <p class="subject-selection-kicker">Select Subject</p>
+          <h4 class="subject-selection-title">Class subject plan</h4>
+        </div>
+        <div class="subject-selection-badge">
+          Grade ${teacherClass.grade}${teacherClass.stream ? ` • ${getStreamLabel(teacherClass.stream) || teacherClass.stream}` : ""}
+        </div>
+      </div>
+  `;
+
   let mandatorySectionHtml = "";
   const mandatoryEntries = getMandatorySubjectEntries(plan);
   const mandatorySubjects = mandatoryEntries.filter(
@@ -223,9 +242,22 @@ function renderSubjectSelectionForm() {
   );
   if (mandatoryEntries.length > 0) {
     mandatorySectionHtml = `
-      <div class="subject-group">
-        <div style="padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 0.9rem; margin-bottom: 10px;">
-          ${mandatorySubjects.map((entry) => entry.name).join(", ")}
+      <div class="subject-selection-section">
+        <div class="subject-selection-section-header">
+          <span class="subject-selection-section-title">Mandatory subjects</span>
+          <span class="subject-selection-section-note">Auto-assigned</span>
+        </div>
+        <div class="subject-chip-list">
+          ${mandatorySubjects
+            .map(
+              (entry) => `
+                <span class="subject-chip">
+                  <span class="subject-chip-dot"></span>
+                  <span>${entry.name}</span>
+                </span>
+              `,
+            )
+            .join("")}
         </div>
       </div>
     `;
@@ -236,8 +268,14 @@ function renderSubjectSelectionForm() {
     .filter((group) => Array.isArray(group.options) && group.options.length > 0)
     .map(
       (group) => `
-        <div class="subject-group">
-          <label for="${group.key}">${group.label} *</label>
+        <div class="subject-selection-section subject-selection-card">
+          <div class="subject-selection-section-header">
+            <span class="subject-selection-section-title">${group.label}</span>
+            <span class="subject-selection-section-note">Required</span>
+          </div>
+          <label class="subject-selection-label" for="${group.key}">
+            Choose one subject from this category
+          </label>
           <select id="${group.key}" name="${group.key}" required>
             <option value="">Select from ${group.label}</option>
             ${group.options.map((opt) => `<option value="${opt}">${opt}</option>`).join("")}
@@ -247,7 +285,7 @@ function renderSubjectSelectionForm() {
     )
     .join("");
 
-  html += mandatorySectionHtml + electiveSectionHtml;
+  html += mandatorySectionHtml + electiveSectionHtml + "</div>";
   subjectSelection.innerHTML = html;
 }
 
@@ -300,6 +338,137 @@ function formatPlanList(items) {
   return items;
 }
 
+function getSubjectCardTheme(subjectName, index = 0) {
+  const value = String(subjectName || "").toLowerCase();
+
+  const themes = [
+    { icon: "∑", tint: "indigo" },
+    { icon: "△", tint: "blue" },
+    { icon: "▮", tint: "emerald" },
+    { icon: "□", tint: "slate" },
+    { icon: "λ", tint: "violet" },
+    { icon: "◌", tint: "amber" },
+  ];
+
+  if (
+    value.includes("math") ||
+    value.includes("algebra") ||
+    value.includes("calculus")
+  ) {
+    return { icon: "∑", tint: "indigo" };
+  }
+  if (value.includes("geo")) {
+    return { icon: "△", tint: "blue" };
+  }
+  if (value.includes("stat")) {
+    return { icon: "▮", tint: "emerald" };
+  }
+  if (
+    value.includes("science") ||
+    value.includes("bio") ||
+    value.includes("chem") ||
+    value.includes("phys")
+  ) {
+    return { icon: "◌", tint: "teal" };
+  }
+  if (
+    value.includes("history") ||
+    value.includes("civic") ||
+    value.includes("soc")
+  ) {
+    return { icon: "▣", tint: "slate" };
+  }
+  if (
+    value.includes("language") ||
+    value.includes("english") ||
+    value.includes("literature")
+  ) {
+    return { icon: "✎", tint: "violet" };
+  }
+
+  return themes[index % themes.length];
+}
+
+function createSubjectCard(subjectName, index = 0, detailText = "") {
+  const theme = getSubjectCardTheme(subjectName, index);
+  const card = document.createElement("article");
+  card.className = `subject-plan-card subject-plan-card-${theme.tint}`;
+
+  const iconWrap = document.createElement("div");
+  iconWrap.className = "subject-plan-card-icon";
+  iconWrap.textContent = theme.icon;
+
+  const body = document.createElement("div");
+  body.className = "subject-plan-card-body";
+
+  const title = document.createElement("h4");
+  title.textContent = subjectName;
+
+  const subtitle = document.createElement("p");
+  subtitle.textContent = detailText;
+
+  body.appendChild(title);
+  body.appendChild(subtitle);
+
+  const arrow = document.createElement("span");
+  arrow.className = "subject-plan-card-arrow";
+  arrow.textContent = ">";
+
+  card.appendChild(iconWrap);
+  card.appendChild(body);
+  card.appendChild(arrow);
+
+  return card;
+}
+
+function createSubjectGroupCard(group, index = 0) {
+  const theme = getSubjectCardTheme(group.label || "Elective Group", index);
+  const card = document.createElement("article");
+  card.className = `subject-plan-group-card subject-plan-card-${theme.tint}`;
+
+  const header = document.createElement("div");
+  header.className = "subject-plan-group-header";
+
+  const iconWrap = document.createElement("div");
+  iconWrap.className = "subject-plan-card-icon";
+  iconWrap.textContent = theme.icon;
+
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "subject-plan-group-title-wrap";
+
+  const title = document.createElement("h4");
+  title.textContent = group.label || `Elective Group ${index + 1}`;
+
+  const subtitle = document.createElement("p");
+  subtitle.textContent = `${(group.options || []).length} subject option${(group.options || []).length === 1 ? "" : "s"} available`;
+
+  titleWrap.appendChild(title);
+  titleWrap.appendChild(subtitle);
+
+  const arrow = document.createElement("span");
+  arrow.className = "subject-plan-card-arrow";
+  arrow.textContent = ">";
+
+  header.appendChild(iconWrap);
+  header.appendChild(titleWrap);
+  header.appendChild(arrow);
+
+  const options = document.createElement("div");
+  options.className = "group-options";
+
+  (group.options || []).forEach((option) => {
+    const tag = document.createElement("span");
+    tag.className = "option-tag";
+    tag.textContent = option;
+    options.appendChild(tag);
+  });
+
+  card.appendChild(header);
+  card.appendChild(options);
+
+  return card;
+}
+
 function renderSubjectPlan() {
   if (!subjectPlanContent || !subjectPlanSummary) {
     return;
@@ -321,63 +490,79 @@ function renderSubjectPlan() {
     : `Grade ${plan.grade}`;
   subjectPlanSummary.innerHTML = `<span class="plan-title">${title}</span><span class="plan-subtitle">Current curriculum setup</span>`;
 
-  const sections = [];
+  subjectPlanContent.innerHTML = "";
+  const fragment = document.createDocumentFragment();
   const mandatoryEntries = getMandatorySubjectEntries(plan);
   const mandatorySubjects = mandatoryEntries.filter(
     (entry) => entry.type === "subject",
   );
 
-  sections.push(`
-    <section class="subject-plan-section">
-      <div class="section-header">
-        <span class="section-icon">📚</span>
-        <h3>Mandatory Subjects</h3>
-      </div>
-      <div class="subject-plan-chip-list">
-        ${
-          formatPlanList(mandatorySubjects.map((entry) => entry.name))
-            .map((item) => `<span class="subject-plan-chip">${item}</span>`)
-            .join("") || '<span class="subject-plan-empty">None</span>'
-        }
-      </div>
-    </section>
-  `);
+  const mandatorySection = document.createElement("section");
+  mandatorySection.className = "subject-plan-section";
+
+  const mandatoryHeader = document.createElement("div");
+  mandatoryHeader.className = "section-header";
+  mandatoryHeader.innerHTML = `
+    <span class="section-icon">📚</span>
+    <div>
+      <h3>Mandatory Subjects</h3>
+      <p>Core subjects included in this class plan.</p>
+    </div>
+  `;
+
+  const mandatoryList = document.createElement("div");
+  mandatoryList.className = "subject-plan-card-list";
+
+  const mandatoryNames = formatPlanList(
+    mandatorySubjects.map((entry) => entry.name),
+  );
+  if (mandatoryNames.length === 0) {
+    const emptyState = document.createElement("div");
+    emptyState.className = "subject-plan-empty-state";
+    emptyState.textContent = "No mandatory subjects configured.";
+    mandatoryList.appendChild(emptyState);
+  } else {
+    mandatoryNames.forEach((item, index) => {
+      mandatoryList.appendChild(
+        createSubjectCard(item, index, "Mandatory subject"),
+      );
+    });
+  }
+
+  mandatorySection.appendChild(mandatoryHeader);
+  mandatorySection.appendChild(mandatoryList);
+  fragment.appendChild(mandatorySection);
 
   const nonEmptyElectiveGroups = (plan.elective_groups || []).filter(
     (group) => group.options && group.options.length > 0,
   );
 
   if (nonEmptyElectiveGroups.length > 0) {
-    sections.push(`
-      <section class="subject-plan-section">
-        <div class="section-header">
-          <span class="section-icon">⭐</span>
-          <h3>Elective Groups</h3>
-        </div>
-        <div class="subject-plan-group-list">
-          ${nonEmptyElectiveGroups
-            .map(
-              (group) => `
-                <article class="subject-plan-group-card">
-                  <h4>${group.label}</h4>
-                  <div class="group-options">
-                    ${
-                      formatPlanList(group.options)
-                        .map((opt) => `<span class="option-tag">${opt}</span>`)
-                        .join("") ||
-                      '<span class="no-options">No options</span>'
-                    }
-                  </div>
-                </article>
-              `,
-            )
-            .join("")}
-        </div>
-      </section>
-    `);
+    const electiveSection = document.createElement("section");
+    electiveSection.className = "subject-plan-section";
+
+    const electiveHeader = document.createElement("div");
+    electiveHeader.className = "section-header";
+    electiveHeader.innerHTML = `
+      <span class="section-icon">⭐</span>
+      <div>
+        <h3>Elective Groups</h3>
+        <p>Pick one subject from each elective group.</p>
+      </div>
+    `;
+
+    const electiveList = document.createElement("div");
+    electiveList.className = "subject-plan-group-list";
+    nonEmptyElectiveGroups.forEach((group, index) => {
+      electiveList.appendChild(createSubjectGroupCard(group, index));
+    });
+
+    electiveSection.appendChild(electiveHeader);
+    electiveSection.appendChild(electiveList);
+    fragment.appendChild(electiveSection);
   }
 
-  subjectPlanContent.innerHTML = sections.join("");
+  subjectPlanContent.appendChild(fragment);
 }
 
 function getFilenameFromContentDisposition(headerValue) {

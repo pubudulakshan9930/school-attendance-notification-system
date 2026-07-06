@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="admin-font-smaller">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../assets/css/global.css" />
     <link rel="stylesheet" href="../assets/css/components.css" />
     <link rel="stylesheet" href="./admin.css" />
+    <link rel="stylesheet" href="./analytics/attendance-trend.css" />
   </head>
 
   <body>
@@ -25,28 +26,70 @@
               <h2 class="sidebar-title">Admin Panel</h2>
             </div>
             <nav class="admin-tabs" aria-label="Admin sections">
-              <button
-                class="admin-tab is-active"
-                type="button"
-                data-tab="classes"
-              >
+              <a class="admin-tab is-active" href="#classes" data-tab="classes">
                 Create Class
-              </button>
-              <button class="admin-tab" type="button" data-tab="teachers">
+              </a>
+              <a class="admin-tab" href="#teachers" data-tab="teachers">
                 Register Teacher
-              </button>
-              <button class="admin-tab" type="button" data-tab="class-details">
+              </a>
+              <a
+                class="admin-tab"
+                href="#view-teachers"
+                data-tab="view-teachers"
+              >
+                View All Teachers
+              </a>
+              <a
+                class="admin-tab"
+                href="#view-students"
+                data-tab="view-students"
+              >
+                View All Students
+              </a>
+              <a
+                class="admin-tab"
+                href="#class-details"
+                data-tab="class-details"
+              >
                 Class Details
-              </button>
-              <button class="admin-tab" type="button" data-tab="subject-plans">
+              </a>
+              <a
+                class="admin-tab"
+                href="#subject-plans"
+                data-tab="subject-plans"
+              >
                 Subject Plans
-              </button>
-              <button class="admin-tab" type="button" data-tab="alerts">
+              </a>
+              <a class="admin-tab" href="#alerts" data-tab="alerts">
                 Emergency Alerts
-              </button>
-              <button class="admin-tab" type="button" data-tab="reports">
+              </a>
+              <a
+                class="admin-tab"
+                href="#attendance-settings"
+                data-tab="attendance-settings"
+              >
+                Attendance Settings
+              </a>
+              <a class="admin-tab" href="#reports" data-tab="reports">
                 Get Report
-              </button>
+              </a>
+              <a class="admin-tab" href="#analytics" data-tab="analytics">
+                Analytics
+              </a>
+              <a
+                class="admin-tab"
+                href="#pending-approvals"
+                data-tab="pending-approvals"
+              >
+                Pending approvals
+                <span
+                  id="pendingApprovalsBadge"
+                  class="sidebar-badge"
+                  aria-label="Pending term approvals count"
+                >
+                  0
+                </span>
+              </a>
             </nav>
             <button id="logoutBtn" class="sidebar-logout-btn" type="button">
               Logout
@@ -91,13 +134,6 @@
                 <p class="stat-note">Active classes this year</p>
               </article>
 
-              <article class="dashboard-stat-card stat-card-tools">
-                <span class="stat-card-icon" aria-hidden="true">🛠️</span>
-                <span class="stat-label">Admin tools</span>
-                <strong class="stat-value">5</strong>
-                <p class="stat-note">Create, manage and review sections</p>
-              </article>
-
               <article class="dashboard-stat-card stat-card-reports">
                 <span class="stat-card-icon" aria-hidden="true">📊</span>
                 <span class="stat-label">Reports</span>
@@ -107,7 +143,11 @@
             </section>
 
             <div class="admin-panels">
-              <section class="admin-panel is-active" data-panel="classes">
+              <section
+                class="admin-panel is-active"
+                id="classes"
+                data-panel="classes"
+              >
                 <div class="panel-grid panel-grid-two">
                   <div class="panel-card">
                     <div class="panel-copy">
@@ -166,14 +206,28 @@
                   <div class="panel-card">
                     <div class="panel-copy">
                       <h3>Created Classes</h3>
-                      <p>Active class list for the current school year.</p>
+                      <p>Class list for the current school year.</p>
                     </div>
-                    <ul id="adminClassesList" class="result-list"></ul>
+                    <div class="table-responsive">
+                      <table class="teachers-table classes-table">
+                        <thead>
+                          <tr>
+                            <th>Year</th>
+                            <th>Grade</th>
+                            <th>Class</th>
+                            <th>Teacher Name</th>
+                            <th>Student Count</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody id="adminClassesList"></tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </section>
 
-              <section class="admin-panel" data-panel="teachers">
+              <section class="admin-panel" id="teachers" data-panel="teachers">
                 <div class="panel-card">
                   <div class="panel-copy">
                     <h2>Register Teacher</h2>
@@ -244,7 +298,91 @@
                 </div>
               </section>
 
-              <section class="admin-panel" data-panel="class-details">
+              <section
+                class="admin-panel"
+                id="view-teachers"
+                data-panel="view-teachers"
+              >
+                <div class="panel-card">
+                  <div class="panel-copy">
+                    <h2>View All Teachers</h2>
+                    <p>
+                      View, manage, and export all registered teachers in the
+                      system.
+                    </p>
+                  </div>
+                  <div class="teachers-controls">
+                    <input
+                      id="teacherSearchInput"
+                      type="text"
+                      placeholder="Search by name, email, or teacher code..."
+                      class="search-input"
+                    />
+                    <select id="teacherStatusFilter" class="filter-select">
+                      <option value="">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    <button
+                      id="exportTeachersBtn"
+                      class="btn-export"
+                      type="button"
+                    >
+                      📥 Export as CSV
+                    </button>
+                  </div>
+                </div>
+
+                <div class="teachers-list-container">
+                  <div id="allTeachersList" class="teachers-list-view"></div>
+                </div>
+              </section>
+
+              <section
+                class="admin-panel"
+                id="view-students"
+                data-panel="view-students"
+              >
+                <div class="panel-card">
+                  <div class="panel-copy">
+                    <h2>View All Students</h2>
+                    <p>
+                      View and maintain every registered student record from a
+                      single place.
+                    </p>
+                  </div>
+                  <div class="students-controls">
+                    <input
+                      id="studentSearchInput"
+                      type="text"
+                      placeholder="Search by code, name, parent, phone, email, or location..."
+                      class="search-input"
+                    />
+                    <select id="studentStatusFilter" class="filter-select">
+                      <option value="">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    <button
+                      id="exportStudentsBtn"
+                      class="btn-export"
+                      type="button"
+                    >
+                      📥 Export as CSV
+                    </button>
+                  </div>
+                </div>
+
+                <div class="students-list-container">
+                  <div id="allStudentsList" class="students-list-view"></div>
+                </div>
+              </section>
+
+              <section
+                class="admin-panel"
+                id="class-details"
+                data-panel="class-details"
+              >
                 <div class="panel-card">
                   <div class="panel-copy">
                     <h2>Class Details</h2>
@@ -283,7 +421,11 @@
                 </div>
               </section>
 
-              <section class="admin-panel" data-panel="subject-plans">
+              <section
+                class="admin-panel"
+                id="subject-plans"
+                data-panel="subject-plans"
+              >
                 <div class="panel-card">
                   <div class="panel-copy">
                     <h2>All Grade Subject Plans</h2>
@@ -300,7 +442,7 @@
                 <div id="subjectPlansBoard" class="subject-plans-board"></div>
               </section>
 
-              <section class="admin-panel" data-panel="alerts">
+              <section class="admin-panel" id="alerts" data-panel="alerts">
                 <div class="panel-grid panel-grid-two">
                   <div class="panel-card">
                     <div class="panel-copy">
@@ -345,7 +487,127 @@
                 </div>
               </section>
 
-              <section class="admin-panel" data-panel="reports">
+              <section
+                class="admin-panel"
+                id="attendance-settings"
+                data-panel="attendance-settings"
+              >
+                <div class="panel-grid panel-grid-two">
+                  <div class="panel-card">
+                    <div class="panel-copy">
+                      <h2>Attendance Settings</h2>
+                      <p>
+                        Set daily attendance opening and closing times. Teachers
+                        can mark attendance during this window. After closing
+                        time, attendance becomes read-only and SMS notifications
+                        are automatically sent to parents.
+                      </p>
+                    </div>
+                    <form id="attendanceSettingsForm" class="stack-form">
+                      <div class="form-group">
+                        <label for="attendanceOpenTime"
+                          >Attendance Opens At</label
+                        >
+                        <input
+                          id="attendanceOpenTime"
+                          name="openTime"
+                          type="time"
+                          value="07:30"
+                          required
+                        />
+                        <small
+                          style="
+                            color: #666;
+                            font-size: 0.85rem;
+                            margin-top: 4px;
+                            display: block;
+                          "
+                          >Teachers can start marking attendance from this
+                          time</small
+                        >
+                      </div>
+                      <div class="form-group">
+                        <label for="attendanceCloseTime"
+                          >Attendance Closes At</label
+                        >
+                        <input
+                          id="attendanceCloseTime"
+                          name="closeTime"
+                          type="time"
+                          value="09:30"
+                          required
+                        />
+                        <small
+                          style="
+                            color: #666;
+                            font-size: 0.85rem;
+                            margin-top: 4px;
+                            display: block;
+                          "
+                          >Attendance becomes read-only after this time. SMS
+                          sent automatically to parents.</small
+                        >
+                      </div>
+                      <div class="form-group">
+                        <label for="attendanceTimezone"
+                          >Timezone (Optional)</label
+                        >
+                        <input
+                          id="attendanceTimezone"
+                          name="timezone"
+                          type="text"
+                          placeholder="e.g., Asia/Colombo"
+                          value="Asia/Colombo"
+                        />
+                      </div>
+                      <button type="submit" class="form-full">
+                        Save Settings
+                      </button>
+                    </form>
+                  </div>
+
+                  <div class="panel-card">
+                    <div class="panel-copy">
+                      <h3>Current Configuration</h3>
+                      <p>Active attendance window for today.</p>
+                    </div>
+                    <div
+                      id="attendanceSettingsStatus"
+                      class="status-box"
+                      style="
+                        padding: 16px;
+                        background: #f8f9fa;
+                        border-radius: 8px;
+                        border-left: 4px solid #10223d;
+                      "
+                    >
+                      <div style="margin-bottom: 12px">
+                        <strong>Opens:</strong>
+                        <span id="displayOpenTime">07:30 AM</span>
+                      </div>
+                      <div style="margin-bottom: 12px">
+                        <strong>Closes:</strong>
+                        <span id="displayCloseTime">09:30 AM</span>
+                      </div>
+                      <div
+                        id="attendanceWindowStatus"
+                        style="
+                          margin-top: 16px;
+                          padding: 12px;
+                          background: #dcfce7;
+                          border-radius: 6px;
+                          color: #166534;
+                          font-weight: 500;
+                        "
+                      >
+                        Attendance window is currently active
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="admin-panel" id="reports" data-panel="reports">
                 <div class="panel-card">
                   <div class="panel-copy">
                     <h2>Get Report</h2>
@@ -365,7 +627,10 @@
                 </div>
 
                 <div class="report-grid">
-                  <article class="panel-card report-card">
+                  <article
+                    class="panel-card report-card is-hidden"
+                    id="attendanceReportCard"
+                  >
                     <div class="report-card-header">
                       <h3>Attendance report</h3>
                       <button
@@ -384,7 +649,10 @@
                     <ul id="attendanceReportList" class="result-list"></ul>
                   </article>
 
-                  <article class="panel-card report-card">
+                  <article
+                    class="panel-card report-card is-hidden"
+                    id="termReportCard"
+                  >
                     <div class="report-card-header">
                       <h3>Term-test report</h3>
                       <button
@@ -397,8 +665,202 @@
                       </button>
                     </div>
                     <div id="termReportSummary" class="report-summary"></div>
-                    <ul id="termReportList" class="result-list"></ul>
+                    <div id="termReportList" class="result-list"></div>
                   </article>
+                </div>
+              </section>
+
+              <section
+                class="admin-panel"
+                id="analytics"
+                data-panel="analytics"
+              >
+                <div class="panel-grid panel-grid-two">
+                  <div class="panel-card analytics-overview-card">
+                    <div class="panel-copy">
+                      <h2>Attendance Analytics</h2>
+                      <p>
+                        View the overall daily attendance percentage for the
+                        last 30 school days. Weekends are excluded and inactive
+                        students are ignored in the calculation.
+                      </p>
+                    </div>
+                    <div class="analytics-metrics">
+                      <span class="analytics-chip"
+                        >Present + Late / Total Active Students</span
+                      >
+                      <span class="analytics-chip analytics-chip-secondary"
+                        >Last 30 school days</span
+                      >
+                    </div>
+                  </div>
+
+                  <div class="panel-card analytics-chart-card">
+                    <div class="analytics-chart-header">
+                      <div>
+                        <h3>School Attendance Trend (Last 30 School Days)</h3>
+                        <p id="attendanceTrendCaption">
+                          Chart loads when this panel opens.
+                        </p>
+                      </div>
+                      <span id="attendanceTrendStatus" class="analytics-status"
+                        >Waiting to load</span
+                      >
+                    </div>
+                    <div class="analytics-chart-wrap">
+                      <canvas
+                        id="attendanceTrendChart"
+                        aria-label="School attendance trend chart"
+                        role="img"
+                      ></canvas>
+                    </div>
+                  </div>
+
+                  <div class="panel-card analytics-chart-card">
+                    <div class="analytics-chart-header">
+                      <div>
+                        <h3>Today's Attendance by Grade</h3>
+                        <p id="attendanceByGradeCaption">
+                          Chart loads when this panel opens.
+                        </p>
+                      </div>
+                      <span
+                        id="attendanceByGradeStatus"
+                        class="analytics-status"
+                        >Waiting to load</span
+                      >
+                    </div>
+                    <div class="analytics-chart-wrap">
+                      <canvas
+                        id="attendanceByGradeChart"
+                        aria-label="Today's attendance by grade chart"
+                        role="img"
+                      ></canvas>
+                    </div>
+                  </div>
+
+                  <div class="panel-card analytics-chart-card">
+                    <div class="analytics-chart-header">
+                      <div>
+                        <h3>Today's Attendance Status Distribution</h3>
+                        <p id="attendanceStatusDistributionCaption">
+                          Chart loads when this panel opens.
+                        </p>
+                      </div>
+                      <span
+                        id="attendanceStatusDistributionStatus"
+                        class="analytics-status"
+                        >Waiting to load</span
+                      >
+                    </div>
+                    <div class="analytics-chart-wrap">
+                      <div
+                        id="attendanceStatusDistributionLoading"
+                        class="analytics-state-layer is-hidden"
+                      >
+                        <div class="analytics-state-content">
+                          <div class="analytics-spinner"></div>
+                          <span>Loading attendance distribution…</span>
+                        </div>
+                      </div>
+                      <div
+                        id="attendanceStatusDistributionEmptyState"
+                        class="analytics-state-layer is-hidden"
+                      >
+                        <div
+                          class="analytics-state-content analytics-empty-state"
+                        >
+                          <span>No attendance data available</span>
+                        </div>
+                      </div>
+                      <canvas
+                        id="attendanceStatusDistributionChart"
+                        aria-label="Today's attendance status distribution chart"
+                        role="img"
+                      ></canvas>
+                    </div>
+                  </div>
+
+                  <div class="panel-card analytics-chart-card">
+                    <div class="analytics-chart-header">
+                      <div>
+                        <h3>Average Subject Marks</h3>
+                        <p id="subjectPerformanceCaption">
+                          Select filters to load the subject chart.
+                        </p>
+                      </div>
+                      <span
+                        id="subjectPerformanceStatus"
+                        class="analytics-status"
+                        >Waiting to load</span
+                      >
+                    </div>
+                    <div class="subject-performance-filters">
+                      <div class="analytics-filter-group">
+                        <label for="subjectPerformanceAcademicYear"
+                          >Academic Year</label
+                        >
+                        <select id="subjectPerformanceAcademicYear"></select>
+                      </div>
+                      <div class="analytics-filter-group">
+                        <label for="subjectPerformanceGrade">Grade</label>
+                        <select id="subjectPerformanceGrade"></select>
+                      </div>
+                      <div class="analytics-filter-group">
+                        <label for="subjectPerformanceClass">Class</label>
+                        <select id="subjectPerformanceClass"></select>
+                      </div>
+                      <div class="analytics-filter-group">
+                        <label for="subjectPerformanceTerm">Term</label>
+                        <select id="subjectPerformanceTerm"></select>
+                      </div>
+                    </div>
+                    <div
+                      class="analytics-chart-wrap subject-performance-chart-wrap"
+                    >
+                      <div
+                        id="subjectPerformanceLoading"
+                        class="analytics-state-layer is-hidden"
+                      >
+                        <div class="analytics-state-content">
+                          <div class="analytics-spinner"></div>
+                          <span>Loading subject data…</span>
+                        </div>
+                      </div>
+                      <div
+                        id="subjectPerformanceEmptyState"
+                        class="analytics-state-layer is-hidden"
+                      >
+                        <div
+                          class="analytics-state-content analytics-empty-state"
+                        >
+                          <span>No subject performance data available</span>
+                        </div>
+                      </div>
+                      <canvas
+                        id="subjectPerformanceChart"
+                        aria-label="Average subject marks chart"
+                        role="img"
+                      ></canvas>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                class="admin-panel"
+                id="pending-approvals"
+                data-panel="pending-approvals"
+              >
+                <div class="panel-card">
+                  <div class="panel-copy">
+                    <h2>Pending term approvals</h2>
+                    <p>Review term marks that are ready for admin approval.</p>
+                  </div>
+                </div>
+
+                <div class="panel-card report-card">
+                  <div id="pendingApprovalsList"></div>
                 </div>
               </section>
             </div>
@@ -526,6 +988,161 @@
       </div>
     </div>
 
+    <!-- Teacher Edit Modal -->
+    <div id="teacherEditModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Edit Teacher</h3>
+          <button
+            type="button"
+            class="modal-close"
+            data-modal="teacherEditModal"
+          >
+            &times;
+          </button>
+        </div>
+        <form id="teacherEditForm" class="modal-form">
+          <input type="hidden" id="editTeacherId" />
+          <div class="form-group">
+            <label for="editFullName">Full Name</label>
+            <input id="editFullName" name="full_name" type="text" required />
+          </div>
+          <div class="form-group">
+            <label for="editTeacherCode">Teacher Code</label>
+            <input id="editTeacherCode" name="teacher_code" type="text" />
+          </div>
+          <div class="form-group">
+            <label for="editEmail">Email</label>
+            <input id="editEmail" name="email" type="email" />
+          </div>
+          <div class="form-group">
+            <label for="editPhone">Phone</label>
+            <input id="editPhone" name="phone" type="tel" />
+          </div>
+          <div class="form-group">
+            <label>
+              <input id="editIsActive" name="is_active" type="checkbox" />
+              Active
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-modal="teacherEditModal"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Student Edit Modal -->
+    <div id="studentEditModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Edit Student</h3>
+          <button
+            type="button"
+            class="modal-close"
+            data-modal="studentEditModal"
+          >
+            &times;
+          </button>
+        </div>
+        <form id="studentEditForm" class="modal-form">
+          <input type="hidden" id="editStudentId" />
+          <div class="form-group">
+            <label for="editStudentCode">Student Code</label>
+            <input
+              id="editStudentCode"
+              name="student_code"
+              type="text"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="editStudentFullName">Full Name</label>
+            <input
+              id="editStudentFullName"
+              name="full_name"
+              type="text"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="editStudentParentName">Parent Name</label>
+            <input
+              id="editStudentParentName"
+              name="parent_name"
+              type="text"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="editStudentParentPhone">Parent Phone</label>
+            <input
+              id="editStudentParentPhone"
+              name="parent_phone"
+              type="tel"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="editStudentParentEmail">Parent Email</label>
+            <input
+              id="editStudentParentEmail"
+              name="parent_email"
+              type="email"
+            />
+          </div>
+          <div class="form-group">
+            <label for="editStudentGender">Gender</label>
+            <select id="editStudentGender" name="gender">
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="editStudentCity">City</label>
+            <input id="editStudentCity" name="city" type="text" />
+          </div>
+          <div class="form-group">
+            <label for="editStudentAddress">Address</label>
+            <textarea
+              id="editStudentAddress"
+              name="address"
+              rows="3"
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label>
+              <input
+                id="editStudentIsActive"
+                name="is_active"
+                type="checkbox"
+              />
+              Active
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-modal="studentEditModal"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <style>
       .modal {
         position: fixed;
@@ -591,15 +1208,22 @@
       }
 
       .form-group input,
-      .form-group select {
+      .form-group select,
+      .form-group textarea {
         padding: 10px 12px;
         border: 1px solid #d1d5db;
         border-radius: 8px;
         font-size: 0.95rem;
+        font-family: inherit;
+      }
+
+      .form-group textarea {
+        resize: vertical;
       }
 
       .form-group input:focus,
-      .form-group select:focus {
+      .form-group select:focus,
+      .form-group textarea:focus {
         outline: none;
         border-color: #10223d;
         box-shadow: 0 0 0 3px rgba(16, 34, 61, 0.1);
@@ -625,6 +1249,48 @@
 
     <script src="../assets/js/admin-auth.js"></script>
     <script src="../assets/js/class-stream-utils.js"></script>
+    <script src="./teacherManagement.js"></script>
+    <script src="./studentManagement.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script type="module" src="./analytics/attendance-trend.js"></script>
+    <script type="module" src="./analytics/attendance-by-grade.js"></script>
+    <script
+      type="module"
+      src="./analytics/attendance-status-distribution.js"
+    ></script>
+    <script type="module" src="./analytics/subject-performance.js"></script>
     <script src="./admin.js"></script>
   </body>
+  <script>
+    // Compute sidebar width and set CSS variable so main content offsets correctly.
+    (function setAdminSidebarWidth() {
+      function update() {
+        const sidebar = document.querySelector(".admin-sidebar");
+        if (!sidebar) return;
+        // force layout measurement after fonts load
+        const width = sidebar.offsetWidth || 280;
+        document.documentElement.style.setProperty(
+          "--admin-sidebar-width",
+          width + "px",
+        );
+      }
+      if (
+        document.readyState === "complete" ||
+        document.readyState === "interactive"
+      ) {
+        update();
+      } else {
+        document.addEventListener("DOMContentLoaded", update);
+      }
+      window.addEventListener("resize", function () {
+        // debounce
+        clearTimeout(window.__admin_sidebar_resize_t);
+        window.__admin_sidebar_resize_t = setTimeout(update, 120);
+      });
+      // Re-run after fonts finish loading (helps with Google fonts)
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(update).catch(() => {});
+      }
+    })();
+  </script>
 </html>

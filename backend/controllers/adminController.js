@@ -10,7 +10,9 @@ const {
 } = require("../services/smsService");
 const adminRepository = require("../repositories/adminRepository");
 const adminService = require("../services/adminService");
+const classTermMarksApprovalService = require("../services/classTermMarksApprovalService");
 const pool = require("../db");
+const adminAnalyticsRepository = require("../repositories/adminAnalyticsRepository");
 const {
   normalizeClassStream,
   getAllGradeSubjectPlans,
@@ -401,6 +403,36 @@ async function registerTeacher(req, res) {
   }
 }
 
+async function updateTeacher(req, res) {
+  try {
+    const teacherId = req.params.teacherId;
+    if (!teacherId) {
+      return res.status(400).json({ error: "Teacher ID is required." });
+    }
+
+    const payload = {
+      full_name: req.body.full_name,
+      email: req.body.email,
+      phone: req.body.phone,
+      teacher_code: req.body.teacher_code,
+      is_active: req.body.is_active,
+    };
+
+    const updated = await adminRepository.updateTeacherRecord(
+      teacherId,
+      payload,
+    );
+    if (!updated) {
+      return res.status(404).json({ error: "Teacher not found." });
+    }
+
+    return res.json({ success: true, teacher: updated });
+  } catch (error) {
+    console.error("Admin update teacher error:", error);
+    return res.status(500).json({ error: "Failed to update teacher." });
+  }
+}
+
 async function getAttendanceReport(req, res) {
   try {
     const [summary, recentRecords] = await Promise.all([
@@ -419,21 +451,331 @@ async function getAttendanceReport(req, res) {
   }
 }
 
+async function getAttendanceTrendAnalytics(req, res) {
+  try {
+    const rows =
+      await adminAnalyticsRepository.getAttendanceTrendLast30SchoolDays();
+
+    return res.json({
+      success: true,
+      data: {
+        series: rows.map((row) => ({
+          attendance_date:
+            row.attendance_date instanceof Date
+              ? row.attendance_date.toISOString().slice(0, 10)
+              : String(row.attendance_date || ""),
+          present_count: Number(row.present_count || 0),
+          late_count: Number(row.late_count || 0),
+          absent_count: Number(row.absent_count || 0),
+          total_students: Number(row.total_students || 0),
+          attendance_percentage: Number(row.attendance_percentage || 0),
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Admin attendance trend analytics error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load attendance analytics.",
+    });
+  }
+}
+
+async function getTodayAttendanceByGradeAnalytics(req, res) {
+  try {
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const rows =
+      await adminAnalyticsRepository.getTodayAttendanceByGrade(todayDate);
+
+    return res.json({
+      success: true,
+      data: {
+        report_date: todayDate,
+        series: rows.map((row) => ({
+          grade: Number(row.grade),
+          present_count: Number(row.present_count || 0),
+          late_count: Number(row.late_count || 0),
+          absent_count: Number(row.absent_count || 0),
+          total_students: Number(row.total_students || 0),
+          attendance_percentage: Number(row.attendance_percentage || 0),
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Admin attendance by grade analytics error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load attendance by grade analytics.",
+    });
+  }
+}
+
+async function getTodayAttendanceStatusDistributionAnalytics(req, res) {
+  try {
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const rows =
+      await adminAnalyticsRepository.getTodayAttendanceStatusDistribution(
+        todayDate,
+      );
+
+    const totalCount = rows.reduce(
+      (sum, row) => sum + Number(row.count || 0),
+      0,
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        report_date: todayDate,
+        total_count: totalCount,
+        series: rows.map((row) => ({
+          status: String(row.status || ""),
+          count: Number(row.count || 0),
+          percentage:
+            totalCount > 0
+              ? Number(((Number(row.count || 0) / totalCount) * 100).toFixed(2))
+              : 0,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Admin attendance status distribution analytics error:",
+      error,
+    );
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load attendance status distribution analytics.",
+    });
+  }
+}
+
+function normalizeAnalyticsFilterValue(value, parser) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsed = parser(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+async function getSubjectPerformanceFilterOptions(req, res) {
+  try {
+    const academicYear = normalizeAnalyticsFilterValue(
+      req.query.academic_year || req.query.academicYear,
+      (value) => Number(value),
+    );
+    const grade = normalizeAnalyticsFilterValue(req.query.grade, (value) =>
+      Number(value),
+    );
+
+    const filters =
+      await adminAnalyticsRepository.getSubjectPerformanceFilterOptions(
+        academicYear,
+        grade,
+      );
+
+    return res.json({
+      success: true,
+      data: {
+        academic_years: filters.academic_years || [],
+        grades: filters.grades || [],
+        classes: filters.classes || [],
+        terms: [
+          { value: 1, label: "First Term" },
+          { value: 2, label: "Second Term" },
+          { value: 3, label: "Third Term" },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error("Subject performance filter options error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load subject performance filters.",
+    });
+  }
+}
+
+async function getSubjectPerformanceAnalytics(req, res) {
+  try {
+    const academicYear = normalizeAnalyticsFilterValue(
+      req.query.academic_year || req.query.academicYear,
+      (value) => Number(value),
+    );
+    const grade = normalizeAnalyticsFilterValue(req.query.grade, (value) =>
+      Number(value),
+    );
+    const classId = String(
+      req.query.class_id || req.query.classId || "",
+    ).trim();
+    const term = normalizeAnalyticsFilterValue(req.query.term, (value) =>
+      Number(value),
+    );
+
+    const rows = await adminAnalyticsRepository.getSubjectPerformanceSeries(
+      academicYear,
+      grade,
+      classId,
+      term,
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        series: rows.map((row) => ({
+          subject: String(row.subject_name || ""),
+          average_marks: Number(row.average_marks || 0),
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Subject performance analytics error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load subject performance analytics.",
+    });
+  }
+}
+
 async function getTermTestReport(req, res) {
   try {
-    const [summary, recentRecords] = await Promise.all([
-      adminRepository.getTermTestReportSummary(),
-      adminRepository.getTermTestReportRecentRows(),
-    ]);
+    await classTermMarksApprovalService.reconcileMissingClassTermReviews();
+
+    const [summary, recentRecords, pendingReviews, pendingCount] =
+      await Promise.all([
+        adminRepository.getTermTestReportSummary(),
+        adminRepository.getTermTestReportRecentRows(),
+        classTermMarksApprovalService.getPendingClassTermReviews(),
+        classTermMarksApprovalService.getPendingClassTermReviewsCount(),
+      ]);
 
     return res.json({
       success: true,
       summary,
       recent_records: recentRecords,
+      pending_reviews: pendingReviews,
+      pending_count: Number(pendingCount?.pending_count || 0),
     });
   } catch (error) {
     console.error("Admin term test report error:", error);
     return res.status(500).json({ error: "Internal server error." });
+  }
+}
+
+async function getTermMarksReviewDetail(req, res) {
+  try {
+    const classId = String(
+      req.query.class_id || req.query.classId || "",
+    ).trim();
+    const term = Number(req.query.term);
+    const academicYear = Number(
+      req.query.academic_year || req.query.academicYear,
+    );
+
+    if (!classId || !Number.isInteger(term) || !academicYear) {
+      return res.status(400).json({
+        success: false,
+        error: "class_id, term, and academic_year are required.",
+      });
+    }
+
+    const [snapshot, reviewResult] = await Promise.all([
+      classTermMarksApprovalService.getClassTermSnapshot(
+        classId,
+        term,
+        academicYear,
+      ),
+      pool.query(
+        `
+          SELECT
+            id,
+            class_id,
+            term,
+            academic_year,
+            review_status,
+            admin_notified_at,
+            admin_notification_error,
+            approved_by,
+            approved_at,
+            parent_sms_status,
+            parent_sms_sent_at,
+            parent_sms_error,
+            created_at,
+            updated_at
+          FROM term_class_marks_reviews
+          WHERE class_id = $1
+            AND term = $2
+            AND academic_year = $3
+          LIMIT 1
+        `,
+        [classId, term, academicYear],
+      ),
+    ]);
+
+    const review = reviewResult.rows[0] || null;
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        error: "Term marks review not found.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      review,
+      snapshot,
+    });
+  } catch (error) {
+    console.error("Admin term marks review detail error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load term marks review details.",
+    });
+  }
+}
+
+async function approveTermMarks(req, res) {
+  try {
+    const classId = String(req.body.class_id || req.body.classId || "").trim();
+    const term = Number(req.body.term);
+    const academicYear = Number(
+      req.body.academic_year || req.body.academicYear,
+    );
+
+    if (!classId || !Number.isInteger(term) || !academicYear) {
+      return res.status(400).json({
+        success: false,
+        error: "class_id, term, and academic_year are required.",
+      });
+    }
+
+    const result = await classTermMarksApprovalService.approveClassTermMarks({
+      classId,
+      term,
+      academicYear,
+      approvedBy: req.user.userId,
+    });
+
+    return res.json({
+      success: true,
+      message: "Term marks approved successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Admin approve term marks error:", error);
+
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to approve term marks.",
+    });
   }
 }
 
@@ -513,7 +855,7 @@ async function getFilteredTermTestReport(req, res) {
       });
     }
 
-    const [records, summary] = await Promise.all([
+    const [records, summary, pendingReviews] = await Promise.all([
       adminRepository.getFilteredTermTestRows(
         yearNum,
         gradeNum,
@@ -528,7 +870,28 @@ async function getFilteredTermTestReport(req, res) {
         termNum,
         streamValue,
       ),
+      classTermMarksApprovalService.getPendingClassTermReviews(100),
     ]);
+
+    const filteredPendingReviews = pendingReviews.filter((review) => {
+      const classInfo = review.class_info || {};
+      const reviewGrade = Number(classInfo.grade);
+      const reviewSection = String(classInfo.section || "").toUpperCase();
+      const reviewStream = normalizeClassStream(classInfo.stream);
+      const matchesYear = Number(review.academic_year) === yearNum;
+      const matchesGrade = reviewGrade === gradeNum;
+      const matchesTerm = Number(review.term) === termNum;
+
+      if (!matchesYear || !matchesGrade || !matchesTerm) {
+        return false;
+      }
+
+      if (gradeNum === 12 || gradeNum === 13) {
+        return reviewStream === streamValue;
+      }
+
+      return reviewSection === classStr;
+    });
 
     return res.json({
       success: true,
@@ -538,10 +901,109 @@ async function getFilteredTermTestReport(req, res) {
         average_mark: 0,
         distinction_count: 0,
       },
+      pending_reviews: filteredPendingReviews,
+      pending_count: filteredPendingReviews.length,
     });
   } catch (error) {
     console.error("Admin filtered term test report error:", error);
     return res.status(500).json({ error: "Internal server error." });
+  }
+}
+
+async function getTermTestReportCsv(req, res) {
+  try {
+    const { year, grade, class: classSection, term, stream } = req.query;
+
+    if (!year || !grade || !classSection || !term) {
+      return res.status(400).json({
+        error: "Missing required parameters: year, grade, class, term",
+      });
+    }
+
+    const yearNum = Number(year);
+    const gradeNum = Number(grade);
+    const classStr = String(classSection).toUpperCase();
+    const termNum = Number(term);
+    const streamValue = normalizeClassStream(stream);
+
+    if ((gradeNum === 12 || gradeNum === 13) && !streamValue) {
+      return res
+        .status(400)
+        .json({ error: "Stream is required for grades 12 and 13." });
+    }
+
+    // Fetch raw rows and pivot in Node
+    const rows = await adminRepository.getFilteredTermTestRows(
+      yearNum,
+      gradeNum,
+      classStr,
+      termNum,
+      streamValue,
+    );
+
+    // Build subject list (unique, ordered by appearance)
+    const subjects = [];
+    const subjectSet = new Set();
+    const studentsMap = new Map(); // key: student_code||name -> { student_code, student_name, marks: { subject: mark } }
+
+    rows.forEach((r) => {
+      const subj = r.subject_name || "";
+      if (subj && !subjectSet.has(subj)) {
+        subjectSet.add(subj);
+        subjects.push(subj);
+      }
+
+      const studentKey = (r.student_code || "") + "::" + (r.student_name || "");
+      if (!studentsMap.has(studentKey)) {
+        studentsMap.set(studentKey, {
+          student_code: r.student_code || "",
+          student_name: r.student_name || "",
+          marks: {},
+        });
+      }
+
+      const student = studentsMap.get(studentKey);
+      student.marks[r.subject_name || ""] = r.mark;
+    });
+
+    // Build CSV header
+    const headerCols = ["Student Code", "Student Name", ...subjects];
+
+    // Escape function
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v);
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+
+    let csv = headerCols.map(escape).join(",") + "\n";
+
+    // Build rows sorted by student name
+    const students = Array.from(studentsMap.values()).sort((a, b) => {
+      return String(a.student_name || "").localeCompare(
+        String(b.student_name || ""),
+      );
+    });
+
+    students.forEach((stu) => {
+      const row = [stu.student_code || "", stu.student_name || ""];
+      subjects.forEach((subj) => {
+        const mark = stu.marks?.[subj];
+        row.push(Number.isFinite(Number(mark)) ? String(mark) : "");
+      });
+      csv += row.map(escape).join(",") + "\n";
+    });
+
+    const gradePart = String(gradeNum || "");
+    const classPart = classStr || streamValue || "class";
+    const fileName = `term-marks-grade-${gradePart}-class-${classPart}-term-${termNum}-${yearNum}.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    return res.send(csv);
+  } catch (error) {
+    console.error("Generate term test CSV error:", error);
+    return res.status(500).json({ error: "Failed to generate CSV." });
   }
 }
 
@@ -593,45 +1055,23 @@ async function getDashboard(req, res) {
 
 async function getStudents(req, res) {
   try {
-    const { grade, section, limit = 100, offset = 0 } = req.query;
+    const { search = "", status = "", limit = 200, offset = 0 } = req.query;
 
-    let query = `
-      SELECT
-        s.id,
-        s.name,
-        s.parent_name,
-        s.parent_phone,
-        s.parent_email,
-        s.is_active,
-        c.grade,
-        c.section,
-        c.academic_year
-      FROM students s
-      LEFT JOIN classes c ON c.id = s.class_id
-      WHERE s.is_active = true
-    `;
-
-    const params = [];
-
-    if (grade && section) {
-      const g = Number(grade);
-      const sec = String(section).toUpperCase();
-      query += ` AND c.grade = $1 AND c.section = $2`;
-      params.push(g, sec);
-    }
-
-    query += ` ORDER BY s.name ASC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(parseInt(limit, 10), parseInt(offset, 10));
-
-    const result = await pool.query(query, params);
-    const countQuery = `SELECT COUNT(*) FROM students WHERE is_active = true`;
-    const countResult = await pool.query(countQuery);
+    const [students, total] = await Promise.all([
+      adminRepository.getStudentSummaryRows({
+        search,
+        status,
+        limit,
+        offset,
+      }),
+      adminRepository.getStudentSummaryCount({ search, status }),
+    ]);
 
     return res.json({
       success: true,
-      data: result.rows,
-      count: result.rows.length,
-      total: parseInt(countResult.rows[0]?.count || 0, 10),
+      students,
+      count: students.length,
+      total,
     });
   } catch (error) {
     console.error("Admin fetch students error:", error);
@@ -646,7 +1086,7 @@ async function getStudentDetail(req, res) {
   try {
     const { studentId } = req.params;
 
-    const detail = await adminService.getStudentDetailedInfo(studentId, 5);
+    const detail = await adminRepository.getStudentRecordById(studentId);
     if (!detail) {
       return res.status(404).json({
         success: false,
@@ -663,6 +1103,150 @@ async function getStudentDetail(req, res) {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch student details.",
+    });
+  }
+}
+
+async function updateStudent(req, res) {
+  try {
+    const { studentId } = req.params;
+    if (!studentId) {
+      return res.status(400).json({
+        success: false,
+        error: "Student ID is required.",
+      });
+    }
+
+    const payload = {
+      full_name:
+        typeof req.body.full_name === "string"
+          ? req.body.full_name.trim()
+          : req.body.full_name,
+      parent_name:
+        typeof req.body.parent_name === "string"
+          ? req.body.parent_name.trim()
+          : req.body.parent_name,
+      parent_phone:
+        typeof req.body.parent_phone === "string"
+          ? req.body.parent_phone.trim()
+          : req.body.parent_phone,
+      parent_email:
+        typeof req.body.parent_email === "string"
+          ? req.body.parent_email.trim()
+          : req.body.parent_email,
+      student_code:
+        typeof req.body.student_code === "string"
+          ? req.body.student_code.trim()
+          : req.body.student_code,
+      gender:
+        typeof req.body.gender === "string"
+          ? req.body.gender.trim()
+          : req.body.gender,
+      city:
+        typeof req.body.city === "string"
+          ? req.body.city.trim()
+          : req.body.city,
+      address:
+        typeof req.body.address === "string"
+          ? req.body.address.trim()
+          : req.body.address,
+      is_active:
+        req.body.is_active === undefined
+          ? undefined
+          : req.body.is_active === true ||
+            req.body.is_active === "true" ||
+            req.body.is_active === 1 ||
+            req.body.is_active === "1",
+    };
+
+    const hasEditableField = Object.values(payload).some(
+      (value) => value !== undefined,
+    );
+
+    if (!hasEditableField) {
+      return res.status(400).json({
+        success: false,
+        error: "At least one field to update is required.",
+      });
+    }
+
+    const requiredFields = [
+      "full_name",
+      "parent_name",
+      "parent_phone",
+      "student_code",
+    ];
+    for (const fieldName of requiredFields) {
+      if (payload[fieldName] !== undefined && payload[fieldName] === "") {
+        return res.status(400).json({
+          success: false,
+          error: `${fieldName.replace(/_/g, " ")} cannot be empty.`,
+        });
+      }
+    }
+
+    const student = await adminRepository.updateStudentRecord(
+      studentId,
+      payload,
+    );
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        error: "Student not found.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Student details updated successfully.",
+      student,
+    });
+  } catch (error) {
+    console.error("Admin update student error:", error);
+
+    if (error.code === "23505") {
+      return res.status(409).json({
+        success: false,
+        error: "Student code already exists.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to update student details.",
+    });
+  }
+}
+
+async function deleteStudent(req, res) {
+  try {
+    const { studentId } = req.params;
+    if (!studentId) {
+      return res.status(400).json({
+        success: false,
+        error: "Student ID is required.",
+      });
+    }
+
+    const student = await adminRepository.deleteStudentRecord(studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        error: "Student not found.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Student deleted successfully.",
+      student,
+    });
+  } catch (error) {
+    console.error("Admin delete student error:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to delete student.",
     });
   }
 }
@@ -985,6 +1569,74 @@ async function updateSettings(req, res) {
   }
 }
 
+async function getAttendanceSettings(req, res) {
+  try {
+    const allSettings = await adminService.getAllSettings();
+    const openTime = allSettings.attendance_open_time || "07:30";
+    const closeTime = allSettings.attendance_close_time || "09:30";
+    const timezone = allSettings.attendance_timezone || "Asia/Colombo";
+
+    return res.json({
+      success: true,
+      data: {
+        open_time: openTime,
+        close_time: closeTime,
+        timezone: timezone,
+      },
+    });
+  } catch (error) {
+    console.error("Admin fetch attendance settings error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch attendance settings.",
+    });
+  }
+}
+
+async function updateAttendanceSettings(req, res) {
+  try {
+    const { open_time, close_time, timezone } = req.body;
+
+    if (!open_time || !close_time) {
+      return res.status(400).json({
+        success: false,
+        message: "open_time and close_time are required.",
+      });
+    }
+
+    // Validate time format (HH:MM)
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(open_time) || !timeRegex.test(close_time)) {
+      return res.status(400).json({
+        success: false,
+        message: "Time must be in HH:MM format.",
+      });
+    }
+
+    await adminService.updateSetting("attendance_open_time", open_time);
+    await adminService.updateSetting("attendance_close_time", close_time);
+    if (timezone) {
+      await adminService.updateSetting("attendance_timezone", timezone);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        open_time,
+        close_time,
+        timezone: timezone || "Asia/Colombo",
+      },
+      message: "Attendance settings updated successfully.",
+    });
+  } catch (error) {
+    console.error("Admin update attendance settings error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update attendance settings.",
+    });
+  }
+}
+
 async function promoteStudents(req, res) {
   try {
     const { fromGrade, fromSection, toGrade, toSection } = req.body;
@@ -1071,14 +1723,25 @@ module.exports = {
   getClassDetails,
   listTeachers,
   registerTeacher,
+  updateTeacher,
   getAttendanceReport,
+  getAttendanceTrendAnalytics,
+  getTodayAttendanceByGradeAnalytics,
+  getTodayAttendanceStatusDistributionAnalytics,
+  getSubjectPerformanceFilterOptions,
+  getSubjectPerformanceAnalytics,
   getTermTestReport,
+  getTermMarksReviewDetail,
+  getTermTestReportCsv,
+  approveTermMarks,
   getFilteredAttendanceReport,
   getFilteredTermTestReport,
   deleteClass,
   getDashboard,
   getStudents,
   getStudentDetail,
+  updateStudent,
+  deleteStudent,
   getAttendanceMonitoring,
   getLowAttendanceClasses,
   getAlerts,
@@ -1088,5 +1751,7 @@ module.exports = {
   getSubjectPlans,
   updateSubjectPlan,
   updateSettings,
+  getAttendanceSettings,
+  updateAttendanceSettings,
   promoteStudents,
 };

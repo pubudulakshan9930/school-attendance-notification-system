@@ -4,57 +4,146 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Teacher Signup - Sureki</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Patrick+Hand&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="../assets/css/global.css" />
   </head>
-  <body>
-    <div class="container">
-      <h1>Teacher Sign Up</h1>
-      <form id="teacherSignupForm">
-        <input name="fullName" type="text" placeholder="Full Name" required />
-        <input name="teacherId" type="text" placeholder="Teacher ID" required />
-        <select name="classId" required>
-          <option value="">Select Class</option>
-        </select>
-        <input name="phone" type="tel" placeholder="Phone Number" required />
-        <input name="email" type="email" placeholder="Email" required />
-        <div class="password-field">
-          <input
-            id="signupPassword"
-            name="password"
-            type="password"
-            placeholder="Password"
-            required
-          />
-          <button
-            id="toggleSignupPassword"
-            type="button"
-            class="password-toggle"
-            aria-label="Show or hide password"
-          >
-            👁
-          </button>
+  <body class="login-page">
+    <main class="login-shell">
+      <section class="login-hero" aria-label="Teacher account creation">
+        <div class="login-hero-brand">
+          <span class="login-hero-mark">S</span>
+          <span class="login-hero-copy">Sureki</span>
         </div>
-        <div class="password-field">
-          <input
-            id="signupConfirmPassword"
-            name="confirmPassword"
-            type="password"
-            placeholder="Confirm Password"
-            required
-          />
-          <button
-            id="toggleSignupConfirmPassword"
-            type="button"
-            class="password-toggle"
-            aria-label="Show or hide confirm password"
-          >
-            👁
-          </button>
+
+        <div class="login-hero-content">
+          <p class="login-hero-kicker">Teacher registration</p>
+          <h1>Create your account</h1>
+          <p class="login-hero-description">
+            Set up your teacher profile to access attendance, student records,
+            term-test entry, and class management tools.
+          </p>
+          <ul class="login-hero-points" aria-label="Teacher signup benefits">
+            <li>Assign your class during registration</li>
+            <li>Use one secure account for teacher tools</li>
+            <li>Keep sign-in consistent with the teacher dashboard</li>
+          </ul>
         </div>
-        <button type="submit">Sign Up</button>
-      </form>
-      <p><a href="../index.html">Back to login</a></p>
-    </div>
+
+        <div class="login-hero-decor" aria-hidden="true">
+          <span class="decor-shape decor-shape-one"></span>
+          <span class="decor-shape decor-shape-two"></span>
+          <span class="decor-shape decor-shape-three"></span>
+          <span class="decor-shape decor-shape-four"></span>
+          <span class="decor-wave"></span>
+        </div>
+      </section>
+
+      <section class="login-panel" aria-label="Teacher sign up form">
+        <div class="container">
+          <div class="login-nav">
+            <a class="go-back-link" href="../index.html">Back to login</a>
+          </div>
+
+          <h1>Teacher Sign Up</h1>
+          <p class="login-subtitle">Create your teacher account to continue.</p>
+
+          <form id="teacherSignupForm">
+            <label class="field-label" for="fullName">Full Name</label>
+            <input
+              id="fullName"
+              name="fullName"
+              type="text"
+              placeholder="Full Name"
+              required
+            />
+
+            <label class="field-label" for="teacherId">Teacher ID</label>
+            <input
+              id="teacherId"
+              name="teacherId"
+              type="text"
+              placeholder="Teacher ID"
+              required
+            />
+
+            <label class="field-label" for="classId">Class</label>
+            <select id="classId" name="classId" required>
+              <option value="">Select Class</option>
+            </select>
+
+            <label class="field-label" for="phone">Phone Number</label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              placeholder="Phone Number"
+              required
+            />
+
+            <label class="field-label" for="email">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="Email"
+              required
+            />
+
+            <label class="field-label" for="signupPassword">Password</label>
+            <div class="password-field">
+              <input
+                id="signupPassword"
+                name="password"
+                type="password"
+                placeholder="Password"
+                required
+              />
+              <button
+                id="toggleSignupPassword"
+                type="button"
+                class="password-toggle"
+                aria-label="Show or hide password"
+              >
+                👁
+              </button>
+            </div>
+
+            <label class="field-label" for="signupConfirmPassword"
+              >Confirm Password</label
+            >
+            <div class="password-field">
+              <input
+                id="signupConfirmPassword"
+                name="confirmPassword"
+                type="password"
+                placeholder="Confirm Password"
+                required
+              />
+              <button
+                id="toggleSignupConfirmPassword"
+                type="button"
+                class="password-toggle"
+                aria-label="Show or hide confirm password"
+              >
+                👁
+              </button>
+            </div>
+
+            <button type="submit">Sign Up</button>
+          </form>
+
+          <div class="login-footer">
+            <span>Already have an account?</span>
+            <a href="../index.html">Back to login</a>
+          </div>
+        </div>
+      </section>
+    </main>
     <script src="../assets/js/class-stream-utils.js"></script>
     <script src="../assets/js/signup.js"></script>
   </body>

@@ -57,7 +57,6 @@ async function getActiveClasses() {
     FROM classes c
     LEFT JOIN users u ON u.id = c.teacher_id
     LEFT JOIN student_class_assignments sca ON sca.class_id = c.id AND sca.removed_at IS NULL
-    WHERE c.is_active = true
     GROUP BY c.id, u.full_name
     ORDER BY c.academic_year DESC, c.grade ASC, c.stream ASC, c.section ASC
   `;
@@ -168,6 +167,265 @@ async function getTeacherAlertRecipients() {
   return rows;
 }
 
+function buildStudentFilterClause({ search = "", status = "" } = {}) {
+  const clauses = ["1=1"];
+  const values = [];
+  let index = 1;
+
+  if (status === "active" || status === "inactive") {
+    clauses.push(`s.is_active = $${index++}`);
+    values.push(status === "active");
+  }
+
+  const trimmedSearch = String(search || "")
+    .trim()
+    .toLowerCase();
+  if (trimmedSearch) {
+    const likeValue = `%${trimmedSearch}%`;
+    clauses.push(`(
+      LOWER(s.full_name) LIKE $${index}
+      OR LOWER(s.student_code) LIKE $${index}
+      OR LOWER(COALESCE(s.parent_name, '')) LIKE $${index}
+      OR LOWER(COALESCE(s.parent_phone, '')) LIKE $${index}
+      OR LOWER(COALESCE(s.parent_email, '')) LIKE $${index}
+      OR LOWER(COALESCE(s.city, '')) LIKE $${index}
+      OR LOWER(COALESCE(s.address, '')) LIKE $${index}
+    )`);
+    values.push(likeValue);
+    index += 1;
+  }
+
+  return {
+    whereClause: clauses.join(" AND "),
+    values,
+    nextIndex: index,
+  };
+}
+
+async function getStudentSummaryRows({
+  search = "",
+  status = "",
+  limit = 200,
+  offset = 0,
+} = {}) {
+  const filters = buildStudentFilterClause({ search, status });
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 200, 1000));
+  const safeOffset = Math.max(0, Number(offset) || 0);
+
+  const query = `
+    SELECT
+      s.id,
+      s.full_name,
+      s.parent_name,
+      s.parent_phone,
+      s.parent_email,
+      s.student_code,
+      s.gender,
+      s.city,
+      s.address,
+      s.is_active,
+      s.created_at,
+      s.updated_at,
+      current_class.class_id,
+      current_class.grade,
+      current_class.section,
+      current_class.stream,
+      current_class.academic_year,
+      u.full_name AS teacher_name
+    FROM students s
+    LEFT JOIN LATERAL (
+      SELECT
+        c.id AS class_id,
+        c.grade,
+        c.section,
+        c.stream,
+        c.academic_year,
+        c.teacher_id
+      FROM student_class_assignments sca
+      JOIN classes c ON c.id = sca.class_id
+      WHERE sca.student_id = s.id
+        AND sca.removed_at IS NULL
+      ORDER BY sca.assigned_at DESC
+      LIMIT 1
+    ) current_class ON TRUE
+    LEFT JOIN users u ON u.id = current_class.teacher_id
+    WHERE ${filters.whereClause}
+    ORDER BY s.full_name ASC, s.created_at DESC
+    LIMIT $${filters.nextIndex} OFFSET $${filters.nextIndex + 1}
+  `;
+
+  const { rows } = await pool.query(query, [
+    ...filters.values,
+    safeLimit,
+    safeOffset,
+  ]);
+  return rows;
+}
+
+async function getStudentSummaryCount({ search = "", status = "" } = {}) {
+  const filters = buildStudentFilterClause({ search, status });
+  const query = `
+    SELECT COUNT(*) AS count
+    FROM students s
+    WHERE ${filters.whereClause}
+  `;
+
+  const { rows } = await pool.query(query, filters.values);
+  return parseInt(rows[0]?.count || 0, 10);
+}
+
+async function getStudentRecordById(studentId) {
+  const query = `
+    SELECT
+      s.id,
+      s.full_name,
+      s.parent_name,
+      s.parent_phone,
+      s.parent_email,
+      s.student_code,
+      s.gender,
+      s.city,
+      s.address,
+      s.is_active,
+      s.created_at,
+      s.updated_at,
+      current_class.class_id,
+      current_class.grade,
+      current_class.section,
+      current_class.stream,
+      current_class.academic_year,
+      u.full_name AS teacher_name
+    FROM students s
+    LEFT JOIN LATERAL (
+      SELECT
+        c.id AS class_id,
+        c.grade,
+        c.section,
+        c.stream,
+        c.academic_year,
+        c.teacher_id
+      FROM student_class_assignments sca
+      JOIN classes c ON c.id = sca.class_id
+      WHERE sca.student_id = s.id
+        AND sca.removed_at IS NULL
+      ORDER BY sca.assigned_at DESC
+      LIMIT 1
+    ) current_class ON TRUE
+    LEFT JOIN users u ON u.id = current_class.teacher_id
+    WHERE s.id = $1
+    LIMIT 1
+  `;
+
+  const { rows } = await pool.query(query, [studentId]);
+  return rows[0] || null;
+}
+
+async function updateStudentRecord(studentId, payload) {
+  const fields = [];
+  const values = [];
+  let index = 1;
+
+  const appendField = (column, value) => {
+    if (value !== undefined) {
+      fields.push(`${column} = $${index++}`);
+      values.push(value);
+    }
+  };
+
+  appendField("full_name", payload.full_name);
+  appendField("parent_name", payload.parent_name);
+  appendField("parent_phone", payload.parent_phone);
+  appendField("parent_email", payload.parent_email);
+  appendField("student_code", payload.student_code);
+  appendField("gender", payload.gender);
+  appendField("city", payload.city);
+  appendField("address", payload.address);
+  appendField("is_active", payload.is_active);
+
+  if (fields.length > 0) {
+    const query = `
+      UPDATE students
+      SET ${fields.join(", ")}, updated_at = NOW()
+      WHERE id = $${index}
+      RETURNING id
+    `;
+
+    values.push(studentId);
+    const result = await pool.query(query, values);
+    if (result.rows.length === 0) {
+      return null;
+    }
+  }
+
+  return getStudentRecordById(studentId);
+}
+
+async function deleteStudentRecord(studentId) {
+  const existingStudent = await getStudentRecordById(studentId);
+  if (!existingStudent) {
+    return null;
+  }
+
+  const query = `
+    DELETE FROM students
+    WHERE id = $1
+    RETURNING id
+  `;
+
+  const { rows } = await pool.query(query, [studentId]);
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return existingStudent;
+}
+
+async function updateTeacherRecord(teacherId, payload) {
+  const fields = [];
+  const values = [];
+  let idx = 1;
+
+  if (payload.full_name !== undefined) {
+    fields.push(`full_name = $${idx++}`);
+    values.push(payload.full_name);
+  }
+  if (payload.email !== undefined) {
+    fields.push(`email = $${idx++}`);
+    values.push(payload.email);
+  }
+  if (payload.phone !== undefined) {
+    fields.push(`phone = $${idx++}`);
+    values.push(payload.phone);
+  }
+  if (payload.teacher_code !== undefined) {
+    fields.push(`teacher_code = $${idx++}`);
+    values.push(payload.teacher_code);
+  }
+  if (payload.is_active !== undefined) {
+    fields.push(`is_active = $${idx++}`);
+    values.push(payload.is_active);
+  }
+
+  if (fields.length === 0) {
+    const { rows } = await pool.query(
+      `SELECT id, full_name, email, phone, teacher_code, is_active, created_at FROM users WHERE id = $1 LIMIT 1`,
+      [teacherId],
+    );
+    return rows[0] || null;
+  }
+
+  const query = `
+    UPDATE users
+    SET ${fields.join(", ")}, updated_at = now()
+    WHERE id = $${idx}
+    RETURNING id, full_name, email, phone, teacher_code, is_active, created_at, updated_at
+  `;
+
+  values.push(teacherId);
+  const { rows } = await pool.query(query, values);
+  return rows[0] || null;
+}
+
 async function getAttendanceReportSummary() {
   const query = `
     SELECT
@@ -244,6 +502,64 @@ async function getTermTestReportRecentRows() {
 
   const { rows } = await pool.query(query);
   return rows;
+}
+
+async function getPendingTermMarkReviews(limit = 25) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 25, 100));
+  const query = `
+    SELECT
+      r.id,
+      r.student_id,
+      r.class_id,
+      r.term,
+      r.academic_year,
+      r.review_status,
+      r.admin_notified_at,
+      r.approved_at,
+      r.parent_sms_status,
+      s.full_name AS student_name,
+      s.student_code,
+      s.parent_name,
+      s.parent_phone,
+      c.grade,
+      c.section,
+      c.stream,
+      COUNT(tt.id) AS subject_count
+    FROM term_marks_reviews r
+    JOIN students s ON s.id = r.student_id
+    JOIN classes c ON c.id = r.class_id
+    LEFT JOIN term_tests tt
+      ON tt.student_id = r.student_id
+     AND tt.class_id = r.class_id
+     AND tt.term = r.term
+     AND tt.academic_year = r.academic_year
+    WHERE r.review_status IN ('pending', 'notified')
+    GROUP BY
+      r.id,
+      s.full_name,
+      s.student_code,
+      s.parent_name,
+      s.parent_phone,
+      c.grade,
+      c.section,
+      c.stream
+    ORDER BY COALESCE(r.admin_notified_at, r.created_at) DESC
+    LIMIT $1
+  `;
+
+  const { rows } = await pool.query(query, [safeLimit]);
+  return rows;
+}
+
+async function getPendingTermMarkReviewsCount() {
+  const query = `
+    SELECT COUNT(*) AS pending_count
+    FROM term_marks_reviews
+    WHERE review_status IN ('pending', 'notified')
+  `;
+
+  const { rows } = await pool.query(query);
+  return rows[0] || null;
 }
 
 async function getFilteredAttendanceRows(
@@ -488,10 +804,17 @@ module.exports = {
   getClassStudents,
   getStudentAlertRecipients,
   getTeacherAlertRecipients,
+  getStudentSummaryRows,
+  getStudentSummaryCount,
+  getStudentRecordById,
+  updateStudentRecord,
+  deleteStudentRecord,
   getAttendanceReportSummary,
   getAttendanceReportRecentRows,
   getTermTestReportSummary,
   getTermTestReportRecentRows,
+  getPendingTermMarkReviews,
+  getPendingTermMarkReviewsCount,
   getFilteredAttendanceRows,
   getFilteredAttendanceSummary,
   getFilteredTermTestRows,
@@ -500,4 +823,5 @@ module.exports = {
   getCustomSubjectPlan,
   getAllCustomSubjectPlans,
   updateSubjectPlan,
+  updateTeacherRecord,
 };

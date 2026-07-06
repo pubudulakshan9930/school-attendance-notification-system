@@ -18,8 +18,8 @@ function requireSmsConfig() {
 
 function sanitizePhone(phone) {
   let cleaned = String(phone || "")
-    .replace(/\s+/g, "")
-    .replace(/[()-]/g, "");
+    .trim()
+    .replace(/[^\d+]/g, "");
 
   if (!cleaned) {
     return null;
@@ -77,8 +77,17 @@ function formatAttendanceSms({
   return message;
 }
 
-function formatTermMarksSms({ parentName, term, className, subjectMarks }) {
+function formatTermMarksSms({
+  parentName,
+  studentName,
+  term,
+  className,
+  studentRank,
+  totalMark,
+  subjectMarks,
+}) {
   const p = String(parentName || "Parent").trim();
+  const s = String(studentName || "student").trim();
   const t = String(term || "term").trim();
   const c = String(className || "class").trim();
 
@@ -94,9 +103,11 @@ function formatTermMarksSms({ parentName, term, className, subjectMarks }) {
         .filter(Boolean)
     : [];
 
-  const header = `Dear ${p}, Your child's ${t} ${c} marks has released,`;
+  const header = `Dear ${p}, ${s}'s ${t} ${c} marks have been released.`;
+  const rankLine = `Class Rank: ${studentRank ?? "N/A"}`;
+  const totalLine = `Total Marks: ${totalMark ?? "N/A"}`;
 
-  return [header, ...lines].join("\n");
+  return [header, rankLine, totalLine, ...lines].join("\n");
 }
 
 function formatEmergencyAlertSms({ alertTitle, alertBody }) {
@@ -128,24 +139,62 @@ function formatRegistrationSms({
 async function sendSms({ recipient, message }) {
   const { apiToken, senderId } = requireSmsConfig();
 
-  const response = await axios.post(
-    TEXTLK_SMS_URL,
-    {
-      recipient,
-      sender_id: senderId,
-      type: "plain",
-      message,
-    },
-    {
+  const cleaned = sanitizePhone(recipient);
+  if (!cleaned) {
+    throw new Error(`Invalid recipient phone number: ${recipient}`);
+  }
+
+  const payload = {
+    api_token: apiToken,
+    recipient: cleaned,
+    sender_id: senderId,
+    type: "plain",
+    message,
+  };
+
+  const formPayload = new URLSearchParams({
+    api_token: apiToken,
+    recipient: cleaned,
+    sender_id: senderId,
+    type: "plain",
+    message,
+  });
+
+  async function postSmsRequest(data, headers) {
+    const response = await axios.post(TEXTLK_SMS_URL, data, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
+        "X-API-Token": apiToken,
+        ...headers,
       },
       timeout: 10000,
-    },
-  );
+    });
 
-  return response.data;
+    return response.data;
+  }
+
+  try {
+    return await postSmsRequest(payload, {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    });
+  } catch (err) {
+    try {
+      return await postSmsRequest(formPayload.toString(), {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      });
+    } catch (fallbackErr) {
+      // Try to surface more helpful error messages from the provider
+      const providerMsg =
+        fallbackErr?.response?.data ||
+        fallbackErr?.response ||
+        fallbackErr.message;
+      const e = new Error(`SMS provider error: ${JSON.stringify(providerMsg)}`);
+      e.cause = fallbackErr;
+      throw e;
+    }
+  }
 }
 
 module.exports = {

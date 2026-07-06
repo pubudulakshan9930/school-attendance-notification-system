@@ -118,11 +118,31 @@ CREATE TABLE term_tests (
     UNIQUE (student_id, class_id, term, academic_year, subject_id)
 );
 
+-- Term marks review and approval workflow
+CREATE TABLE term_marks_reviews (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    term SMALLINT NOT NULL CHECK (term IN (1, 2, 3)),
+    academic_year SMALLINT NOT NULL,
+    review_status TEXT NOT NULL DEFAULT 'pending' CHECK (review_status IN ('pending', 'notified', 'approved')),
+    admin_notified_at TIMESTAMPTZ,
+    admin_notification_error TEXT,
+    approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    approved_at TIMESTAMPTZ,
+    parent_sms_status TEXT NOT NULL DEFAULT 'pending' CHECK (parent_sms_status IN ('pending', 'sent', 'failed')),
+    parent_sms_sent_at TIMESTAMPTZ,
+    parent_sms_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (student_id, class_id, term, academic_year)
+);
+
 -- SMS and email notification history
 CREATE TABLE notification_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    notification_type TEXT NOT NULL CHECK (notification_type IN ('attendance', 'term_test')),
+    notification_type TEXT NOT NULL CHECK (notification_type IN ('attendance', 'term_test', 'registration')),
     medium TEXT NOT NULL CHECK (medium IN ('sms', 'email')),
     recipient TEXT NOT NULL,
     message TEXT NOT NULL,
@@ -152,3 +172,4 @@ CREATE INDEX idx_student_assignments_student ON student_class_assignments(studen
 CREATE INDEX idx_attendance_sheets_date ON attendance_sheets(attendance_date);
 CREATE INDEX idx_attendance_records_student ON attendance_records(student_id);
 CREATE INDEX idx_term_tests_student ON term_tests(student_id);
+CREATE INDEX idx_term_marks_reviews_student ON term_marks_reviews(student_id);
