@@ -11,7 +11,7 @@ const {
   startScheduler,
 } = require("./services/attendanceFinalizationScheduler");
 
-dotenv.config({ path: path.resolve(__dirname, ".env"), override: true });
+dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 const port = process.env.PORT || 4000;
