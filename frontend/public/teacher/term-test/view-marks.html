@@ -60,17 +60,17 @@
         </div>
 
         <div class="marks-summary">
-          <div class="summary-stat">
+          <div class="summary-stat summary-average">
             <span>Average Mark</span>
             <strong id="averageMarks">0%</strong>
           </div>
-          <div class="summary-stat">
+          <div class="summary-stat summary-pending">
             <span>Pending</span>
-            <strong id="pendingCount">00 / 0</strong>
+            <strong id="pendingCount">0 / 0</strong>
           </div>
-          <div class="summary-stat">
+          <div class="summary-stat summary-highest">
             <span>Highest Score</span>
-            <strong id="highestMark">0 / 100</strong>
+            <strong id="highestMark">0%</strong>
             <div
               style="margin-top: 6px; color: #64748b; font-size: 0.95rem"
               id="highestStudent"
@@ -78,20 +78,7 @@
           </div>
         </div>
 
-        <div class="marks-table-wrapper">
-          <table class="marks-table">
-            <thead>
-              <tr>
-                <th>Student Code</th>
-                <th>Student Name</th>
-                <th>Marks</th>
-              </tr>
-            </thead>
-            <tbody id="marksTableBody">
-              <!-- Populated dynamically -->
-            </tbody>
-          </table>
-        </div>
+        <div id="marksCardGrid" class="marks-card-grid"></div>
       </section>
 
       <div id="instructionMessage" class="empty-message">
@@ -286,50 +273,67 @@
         margin-left: auto;
       }
 
-      .marks-table-wrapper {
-        overflow: hidden;
-        border-radius: 18px;
+      .marks-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+
+      .student-mark-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
         border: 1px solid rgba(16, 34, 61, 0.12);
-        box-shadow: 0 12px 30px rgba(16, 34, 61, 0.08);
+        box-shadow: 0 10px 24px rgba(16, 34, 61, 0.06);
       }
 
-      .marks-table {
-        width: 100%;
-        table-layout: fixed;
-        border-collapse: collapse;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      .student-mark-card-main {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
       }
 
-      .marks-table thead {
-        background: linear-gradient(135deg, #10223d 0%, #1a3a52 100%);
-        color: white;
-      }
-
-      .marks-table th {
-        padding: 14px 16px;
-        text-align: left;
+      .student-mark-card-name {
+        font-size: 1rem;
         font-weight: 700;
+        color: #10223d;
       }
 
-      .marks-table td {
-        padding: 12px 16px;
-        border-bottom: 1px solid #e5e7eb;
-        color: #1f2937;
-        word-break: break-word;
+      .student-mark-card-code {
+        font-size: 0.86rem;
+        color: #64748b;
       }
 
-      .marks-table tbody tr:hover {
-        background: #f8fbff;
+      .student-mark-card-score {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        min-width: 92px;
       }
 
-      .marks-table tbody tr:last-child td {
-        border-bottom: none;
-      }
-
-      .marks-table tbody td:first-child {
+      .student-mark-card-score-label {
+        font-size: 0.78rem;
         font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #64748b;
+      }
+
+      .student-mark-card-score-value {
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #10223d;
+        line-height: 1;
+      }
+
+      .student-mark-card-score-value.is-empty {
+        color: #94a3b8;
       }
 
       .marks-summary {
@@ -360,6 +364,33 @@
       .summary-stat strong {
         font-size: 1.5rem;
         color: #10223d;
+      }
+
+      .summary-stat.summary-average {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border-color: rgba(37, 99, 235, 0.2);
+      }
+
+      .summary-stat.summary-average strong {
+        color: #2563eb;
+      }
+
+      .summary-stat.summary-pending {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+        border-color: rgba(234, 88, 12, 0.18);
+      }
+
+      .summary-stat.summary-pending strong {
+        color: #c2410c;
+      }
+
+      .summary-stat.summary-highest {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border-color: rgba(22, 163, 74, 0.2);
+      }
+
+      .summary-stat.summary-highest strong {
+        color: #15803d;
       }
 
       .empty-message,
@@ -439,13 +470,8 @@
           font-size: 1rem;
         }
 
-        .marks-table-wrapper {
-          border-radius: 14px;
-        }
-
-        .marks-table th,
-        .marks-table td {
-          padding: 10px 12px;
+        .student-mark-card {
+          padding: 14px 15px;
         }
 
         .summary-stat {
@@ -497,14 +523,17 @@
           font-size: 0.7rem;
         }
 
-        .marks-table {
-          font-size: 0.9rem;
+        .marks-card-grid {
+          grid-template-columns: 1fr;
         }
 
-        .marks-table th:nth-child(2),
-        .marks-table td:nth-child(2) {
-          text-align: right;
-          white-space: nowrap;
+        .student-mark-card {
+          align-items: flex-start;
+        }
+
+        .student-mark-card-score {
+          align-items: flex-start;
+          min-width: auto;
         }
 
         .marks-summary {
@@ -531,58 +560,6 @@
 
         .marks-table-wrapper {
           overflow: visible;
-        }
-
-        .marks-table,
-        .marks-table thead,
-        .marks-table tbody,
-        .marks-table tr,
-        .marks-table td {
-          display: block;
-          width: 100%;
-        }
-
-        .marks-table {
-          border-collapse: separate;
-          border-spacing: 0;
-          box-shadow: none;
-          background: transparent;
-        }
-
-        .marks-table thead {
-          display: none;
-        }
-
-        .marks-table tbody tr {
-          margin-bottom: 10px;
-          padding: 10px 12px;
-          border: 1px solid rgba(16, 34, 61, 0.12);
-          border-radius: 14px;
-          background: #ffffff;
-          box-shadow: 0 8px 20px rgba(16, 34, 61, 0.06);
-        }
-
-        .marks-table td {
-          padding: 0;
-          border: none;
-          word-break: break-word;
-        }
-
-        .marks-table td:first-child {
-          font-size: 0.95rem;
-          margin-bottom: 8px;
-          color: #10223d;
-        }
-
-        .marks-table td:nth-child(2),
-        .marks-table td:nth-child(3) {
-          margin-top: 6px;
-        }
-
-        .marks-table td:last-child {
-          text-align: left;
-          color: #0f172a;
-          font-weight: 600;
         }
       }
     </style>

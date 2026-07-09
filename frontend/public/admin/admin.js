@@ -22,6 +22,16 @@ const studentCount = document.getElementById("studentCount");
 const teacherCount = document.getElementById("teacherCount");
 const presentCount = document.getElementById("presentCount");
 const presentRate = document.getElementById("presentRate");
+const absentPercentage = document.getElementById("absentPercentage");
+const absentPercentageNote = document.getElementById("absentPercentageNote");
+const latePercentage = document.getElementById("latePercentage");
+const latePercentageNote = document.getElementById("latePercentageNote");
+const createBackupButton = document.getElementById("createBackupBtn");
+const backupStatusMessage = document.getElementById("backupStatusMessage");
+const backupLastBackup = document.getElementById("backupLastBackup");
+const backupTotalCount = document.getElementById("backupTotalCount");
+const backupStorageUsed = document.getElementById("backupStorageUsed");
+const backupHistoryBody = document.getElementById("backupHistoryBody");
 const classCount = document.getElementById("classCount");
 const absentTeacherCount = document.getElementById("absentTeacherCount");
 const alertRecipientList = document.getElementById("alertRecipientList");
@@ -510,6 +520,86 @@ function renderList(container, items, emptyMessage, formatter) {
     listItem.textContent = formatter(item);
     container.appendChild(listItem);
   });
+}
+
+function renderAttendanceTable(container, records, emptyMessage) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "";
+
+  if (!records || records.length === 0) {
+    const emptyState = document.createElement("div");
+    emptyState.className = "empty-state";
+    emptyState.textContent = emptyMessage;
+    container.appendChild(emptyState);
+    return;
+  }
+
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "table-responsive";
+
+  const table = document.createElement("table");
+  table.className = "teachers-table attendance-report-table";
+
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+
+  [
+    "Student Name",
+    "Status",
+    "Class",
+    "Date",
+    "Teacher",
+    "Student Code",
+  ].forEach((label) => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    headRow.appendChild(th);
+  });
+
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  records.forEach((record) => {
+    const row = document.createElement("tr");
+
+    const nameCell = document.createElement("td");
+    nameCell.textContent = record.student_name || "N/A";
+    row.appendChild(nameCell);
+
+    const statusCell = document.createElement("td");
+    const statusValue = String(record.status || "").trim();
+    const badge = document.createElement("span");
+    badge.className = `attendance-status-badge ${statusValue.toLowerCase()}`;
+    badge.textContent = statusValue || "N/A";
+    statusCell.appendChild(badge);
+    row.appendChild(statusCell);
+
+    const classCell = document.createElement("td");
+    classCell.textContent = formatClassLabel(record) || "N/A";
+    row.appendChild(classCell);
+
+    const dateCell = document.createElement("td");
+    dateCell.textContent = record.attendance_date || "-";
+    row.appendChild(dateCell);
+
+    const teacherCell = document.createElement("td");
+    teacherCell.textContent = record.teacher_name || "-";
+    row.appendChild(teacherCell);
+
+    const codeCell = document.createElement("td");
+    codeCell.textContent = record.student_code || "-";
+    row.appendChild(codeCell);
+
+    tbody.appendChild(row);
+  });
+
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  container.appendChild(tableWrap);
 }
 
 function buildTermMarksMatrix(records) {
@@ -1502,8 +1592,15 @@ async function loadDashboardMetrics() {
     const metrics = data.data || {};
     console.log("Extracted metrics:", metrics);
 
-    const attendanceRate = Number(metrics.today_attendance_rate || 0);
-    const attendanceRateLabel = `${attendanceRate.toFixed(1)}%`;
+    const totalStudents = Number(metrics.total_students || 0);
+    const presentCountValue = Number(metrics.present_count_today || 0);
+    const presentRateValue =
+      totalStudents > 0 ? (presentCountValue / totalStudents) * 100 : 0;
+    const absentCount = Number(metrics.absent_count_today || 0);
+    const absentRate =
+      totalStudents > 0 ? (absentCount / totalStudents) * 100 : 0;
+    const lateCount = Number(metrics.late_count_today || 0);
+    const lateRate = totalStudents > 0 ? (lateCount / totalStudents) * 100 : 0;
 
     if (studentCount) {
       const count = Number(metrics.total_students || 0);
@@ -1518,14 +1615,214 @@ async function loadDashboardMetrics() {
     }
 
     if (presentCount) {
-      presentCount.textContent = String(metrics.present_count_today || 0);
+      presentCount.textContent = `${presentRateValue.toFixed(1)}%`;
     }
 
     if (presentRate) {
-      presentRate.textContent = `Attendance rate: ${attendanceRateLabel}`;
+      presentRate.textContent =
+        totalStudents > 0
+          ? `${presentCountValue} of ${totalStudents} students present today`
+          : "No student roster available";
+    }
+
+    if (absentPercentage) {
+      absentPercentage.textContent = `${absentRate.toFixed(1)}%`;
+    }
+
+    if (absentPercentageNote) {
+      absentPercentageNote.textContent =
+        totalStudents > 0
+          ? `${absentCount} of ${totalStudents} students absent today`
+          : "No student roster available";
+    }
+
+    if (latePercentage) {
+      latePercentage.textContent = `${lateRate.toFixed(1)}%`;
+    }
+
+    if (latePercentageNote) {
+      latePercentageNote.textContent =
+        totalStudents > 0
+          ? `${lateCount} of ${totalStudents} students late today`
+          : "No student roster available";
     }
   } catch (error) {
     console.error("Failed to load dashboard metrics:", error);
+  }
+}
+
+function formatBackupDate(value) {
+  if (!value) {
+    return "Not available";
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Not available" : date.toLocaleString();
+}
+
+function setBackupStatus(message, isError = false) {
+  if (!backupStatusMessage) {
+    return;
+  }
+
+  backupStatusMessage.textContent = message;
+  backupStatusMessage.className = `backup-status-message${isError ? " is-error" : ""}`;
+}
+
+function renderBackupHistory(backups) {
+  if (!backupHistoryBody) {
+    return;
+  }
+
+  backupHistoryBody.innerHTML = "";
+
+  if (!backups.length) {
+    const emptyRow = document.createElement("tr");
+    const emptyCell = document.createElement("td");
+    emptyCell.colSpan = 5;
+    emptyCell.textContent = "No backups available.";
+    emptyRow.appendChild(emptyCell);
+    backupHistoryBody.appendChild(emptyRow);
+    return;
+  }
+
+  backups.forEach((backup) => {
+    const row = document.createElement("tr");
+
+    const nameCell = document.createElement("td");
+    nameCell.textContent = backup.backup_name || backup.file_name || "Backup";
+
+    const dateCell = document.createElement("td");
+    dateCell.textContent = formatBackupDate(backup.created_at);
+
+    const sizeCell = document.createElement("td");
+    sizeCell.textContent = backup.file_size || "0 B";
+
+    const statusCell = document.createElement("td");
+    statusCell.textContent = backup.status || "completed";
+
+    const actionsCell = document.createElement("td");
+    const downloadButton = document.createElement("button");
+    downloadButton.type = "button";
+    downloadButton.className = "btn btn-secondary backup-action-btn";
+    downloadButton.textContent = "Download";
+    downloadButton.addEventListener("click", () => {
+      void downloadBackupFile(backup.id);
+    });
+
+    const restoreButton = document.createElement("button");
+    restoreButton.type = "button";
+    restoreButton.className = "btn backup-action-btn";
+    restoreButton.textContent = "Restore";
+    restoreButton.addEventListener("click", () => {
+      void restoreBackupFile(backup.id);
+    });
+
+    actionsCell.appendChild(downloadButton);
+    actionsCell.appendChild(restoreButton);
+
+    row.appendChild(nameCell);
+    row.appendChild(dateCell);
+    row.appendChild(sizeCell);
+    row.appendChild(statusCell);
+    row.appendChild(actionsCell);
+
+    backupHistoryBody.appendChild(row);
+  });
+}
+
+async function loadBackupModule() {
+  try {
+    const data = await apiFetch("/api/admin/backups");
+    const summary = data.data?.summary || {};
+    const history = data.data?.history || [];
+
+    if (backupLastBackup) {
+      backupLastBackup.textContent = summary.last_backup_at
+        ? formatBackupDate(summary.last_backup_at)
+        : "No backup yet";
+    }
+
+    if (backupTotalCount) {
+      backupTotalCount.textContent = String(summary.total_backups || 0);
+    }
+
+    if (backupStorageUsed) {
+      backupStorageUsed.textContent = summary.storage_used || "0 B";
+    }
+
+    renderBackupHistory(history);
+    setBackupStatus(
+      history.length > 0
+        ? data.message || "Backup history loaded."
+        : "No Backup Available",
+    );
+  } catch (error) {
+    console.error("Load backup module failed:", error);
+    setBackupStatus(error.message || "Backup Failed", true);
+  }
+}
+
+async function handleCreateBackup() {
+  try {
+    const data = await apiFetch("/api/admin/backups/create", {
+      method: "POST",
+    });
+    setBackupStatus(data.message || "Backup Created Successfully");
+    await loadBackupModule();
+  } catch (error) {
+    console.error("Create backup failed:", error);
+    setBackupStatus(error.message || "Backup Failed", true);
+  }
+}
+
+async function downloadBackupFile(backupId) {
+  const token = getToken();
+  const response = await fetch(`/api/admin/backups/${backupId}/download`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorPayload = await response.text();
+    throw new Error(errorPayload || "Download failed.");
+  }
+
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get("content-disposition") || "";
+  const fileNameMatch = contentDisposition.match(/filename="?(.+?)"?$/i);
+  const fileName = fileNameMatch?.[1] || `backup_${backupId}.sql`;
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
+async function restoreBackupFile(backupId) {
+  const confirmed = window.confirm(
+    "Restoring will overwrite the current database.\nContinue?",
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const data = await apiFetch(`/api/admin/backups/${backupId}/restore`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ confirm: true }),
+    });
+    setBackupStatus(data.message || "Restore Successful");
+    await loadBackupModule();
+  } catch (error) {
+    console.error("Restore backup failed:", error);
+    setBackupStatus(error.message || "Restore Failed", true);
   }
 }
 
@@ -1603,13 +1900,10 @@ async function loadAttendanceReport() {
     Late: summary.late_count || 0,
   });
 
-  renderList(
+  renderAttendanceTable(
     attendanceReportList,
     data.recent_records || [],
     "No attendance records found.",
-    (record) => {
-      return `${record.student_name} - ${record.status} - ${formatClassLabel(record)} by ${record.teacher_name}`;
-    },
   );
 }
 
@@ -2280,13 +2574,10 @@ if (attendanceFilterForm) {
         Late: data.summary?.late_count || 0,
       });
 
-      renderList(
+      renderAttendanceTable(
         attendanceReportList,
         data.records || [],
         "No attendance records found for this filter.",
-        (record) => {
-          return `${record.student_name} - ${record.status} (${record.student_code || "N/A"})`;
-        },
       );
 
       if (downloadAttendanceReportButton && (data.records || []).length > 0) {
@@ -2441,6 +2732,7 @@ if (initialTab) {
       initializeClassDetailsFilters(),
       loadAttendanceSettings(),
       loadPendingTermApprovalCount(),
+      loadBackupModule(),
     ]);
 
     loadSubjectPlans().catch((error) => {
@@ -2454,6 +2746,12 @@ if (initialTab) {
 })();
 
 // Logout functionality
+if (createBackupButton) {
+  createBackupButton.addEventListener("click", () => {
+    void handleCreateBackup();
+  });
+}
+
 const logoutBtn = document.getElementById("logoutBtn");
 if (logoutBtn) {
   logoutBtn.addEventListener("click", () => {

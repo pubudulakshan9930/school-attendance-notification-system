@@ -10,6 +10,10 @@
       href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Patrick+Hand&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
     <link rel="stylesheet" href="../assets/css/global.css" />
     <link rel="stylesheet" href="../assets/css/components.css" />
     <link rel="stylesheet" href="./admin.css" />
@@ -27,61 +31,104 @@
             </div>
             <nav class="admin-tabs" aria-label="Admin sections">
               <a class="admin-tab is-active" href="#classes" data-tab="classes">
-                Create Class
+                <span class="admin-tab-label">Create Class</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-plus-circle"></i>
+                </span>
               </a>
               <a class="admin-tab" href="#teachers" data-tab="teachers">
-                Register Teacher
+                <span class="admin-tab-label">Register Teacher</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-chalkboard-teacher"></i>
+                </span>
               </a>
               <a
                 class="admin-tab"
                 href="#view-teachers"
                 data-tab="view-teachers"
               >
-                View All Teachers
+                <span class="admin-tab-label">View All Teachers</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-users"></i>
+                </span>
               </a>
               <a
                 class="admin-tab"
                 href="#view-students"
                 data-tab="view-students"
               >
-                View All Students
+                <span class="admin-tab-label">View All Students</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-user-graduate"></i>
+                </span>
               </a>
               <a
                 class="admin-tab"
                 href="#class-details"
                 data-tab="class-details"
               >
-                Class Details
+                <span class="admin-tab-label">Class Details</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-school"></i>
+                </span>
               </a>
               <a
                 class="admin-tab"
                 href="#subject-plans"
                 data-tab="subject-plans"
               >
-                Subject Plans
+                <span class="admin-tab-label">Subject Plans</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-book-open"></i>
+                </span>
               </a>
               <a class="admin-tab" href="#alerts" data-tab="alerts">
-                Emergency Alerts
+                <span class="admin-tab-label">Emergency Alerts</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-bell"></i>
+                </span>
               </a>
               <a
                 class="admin-tab"
                 href="#attendance-settings"
                 data-tab="attendance-settings"
               >
-                Attendance Settings
+                <span class="admin-tab-label">Attendance Settings</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-calendar-check"></i>
+                </span>
+              </a>
+              <a
+                class="admin-tab"
+                href="#backup-restore"
+                data-tab="backup-restore"
+              >
+                <span class="admin-tab-label">Backup & Restore</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-database"></i>
+                </span>
               </a>
               <a class="admin-tab" href="#reports" data-tab="reports">
-                Get Report
+                <span class="admin-tab-label">Get Report</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-file-alt"></i>
+                </span>
               </a>
               <a class="admin-tab" href="#analytics" data-tab="analytics">
-                Analytics
+                <span class="admin-tab-label">Analytics</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-chart-pie"></i>
+                </span>
               </a>
               <a
                 class="admin-tab"
                 href="#pending-approvals"
                 data-tab="pending-approvals"
               >
-                Pending approvals
+                <span class="admin-tab-label">Pending approvals</span>
+                <span class="admin-tab-icon" aria-hidden="true">
+                  <i class="fa-solid fa-clock"></i>
+                </span>
                 <span
                   id="pendingApprovalsBadge"
                   class="sidebar-badge"
@@ -115,10 +162,12 @@
               <article class="dashboard-stat-card stat-card-present">
                 <span class="stat-card-icon" aria-hidden="true">📈</span>
                 <span class="stat-label">Present today</span>
-                <span id="presentCount" class="stat-value">0</span>
+                <span id="presentCount" class="stat-value">0%</span>
 
                 <p class="stat-note">
-                  <strong id="presentRate">0%</strong>
+                  <strong id="presentRate"
+                    >0 of 0 students present today</strong
+                  >
                 </p>
               </article>
             </section>
@@ -135,10 +184,21 @@
               </article>
 
               <article class="dashboard-stat-card stat-card-reports">
-                <span class="stat-card-icon" aria-hidden="true">📊</span>
-                <span class="stat-label">Reports</span>
-                <strong class="stat-value">2</strong>
-                <p class="stat-note">Attendance and term-test reports</p>
+                <span class="stat-card-icon" aria-hidden="true">�</span>
+                <span class="stat-label">Absent today</span>
+                <strong id="absentPercentage" class="stat-value">0%</strong>
+                <p id="absentPercentageNote" class="stat-note">
+                  0 of 0 students absent
+                </p>
+              </article>
+
+              <article class="dashboard-stat-card stat-card-late">
+                <span class="stat-card-icon" aria-hidden="true">⏰</span>
+                <span class="stat-label">Late today</span>
+                <strong id="latePercentage" class="stat-value">0%</strong>
+                <p id="latePercentageNote" class="stat-note">
+                  0 of 0 students late
+                </p>
               </article>
             </section>
 
@@ -473,17 +533,6 @@
                       <button type="submit">Send Alert</button>
                     </form>
                   </div>
-                  <div class="panel-card">
-                    <div class="panel-copy">
-                      <h3>Delivery notes</h3>
-                      <p>
-                        Student alerts are sent to parent phone numbers on each
-                        student record. Teacher alerts are sent to active
-                        teacher phone numbers.
-                      </p>
-                    </div>
-                    <ul id="alertRecipientList" class="result-list"></ul>
-                  </div>
                 </div>
               </section>
 
@@ -607,6 +656,73 @@
                 </div>
               </section>
 
+              <section
+                class="admin-panel"
+                id="backup-restore"
+                data-panel="backup-restore"
+              >
+                <div class="panel-card">
+                  <div class="panel-copy">
+                    <h2>Backup & Restore</h2>
+                    <p>
+                      Create database backups, review history, and restore from
+                      an existing backup.
+                    </p>
+                  </div>
+                  <div class="backup-actions">
+                    <button type="button" id="createBackupBtn">
+                      Create Backup
+                    </button>
+                  </div>
+                  <div id="backupStatusMessage" class="backup-status-message">
+                    Loading backup history...
+                  </div>
+                </div>
+
+                <div class="panel-grid panel-grid-two">
+                  <div class="panel-card backup-summary-card">
+                    <div class="panel-copy">
+                      <h3>Backup Summary</h3>
+                    </div>
+                    <div class="backup-summary-list">
+                      <div>
+                        <span class="backup-summary-label">Last Backup</span>
+                        <strong id="backupLastBackup">No backup yet</strong>
+                      </div>
+                      <div>
+                        <span class="backup-summary-label">Total Backups</span>
+                        <strong id="backupTotalCount">0</strong>
+                      </div>
+                      <div>
+                        <span class="backup-summary-label">Storage Used</span>
+                        <strong id="backupStorageUsed">0 B</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel-card">
+                    <div class="panel-copy">
+                      <h3>Backup History</h3>
+                      <p>Newest backup files appear first.</p>
+                    </div>
+                    <div class="table-responsive">
+                      <table class="teachers-table">
+                        <thead>
+                          <tr>
+                            <th>Backup Name</th>
+                            <th>Backup Date</th>
+                            <th>File Size</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody id="backupHistoryBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               <section class="admin-panel" id="reports" data-panel="reports">
                 <div class="panel-card">
                   <div class="panel-copy">
@@ -617,11 +733,19 @@
                     </p>
                   </div>
                   <div class="report-actions">
-                    <button type="button" id="loadAttendanceReport">
-                      Load Attendance Report
+                    <button
+                      type="button"
+                      id="loadAttendanceReport"
+                      class="report-action-btn"
+                    >
+                      Attendance Report
                     </button>
-                    <button type="button" id="loadTermReport">
-                      Load Term Test Report
+                    <button
+                      type="button"
+                      id="loadTermReport"
+                      class="report-action-btn"
+                    >
+                      Term Test Report
                     </button>
                   </div>
                 </div>
@@ -636,7 +760,7 @@
                       <button
                         type="button"
                         id="downloadAttendanceReport"
-                        class="btn btn-secondary"
+                        class="report-download-btn"
                         style="display: none"
                       >
                         Download CSV
@@ -646,7 +770,7 @@
                       id="attendanceReportSummary"
                       class="report-summary"
                     ></div>
-                    <ul id="attendanceReportList" class="result-list"></ul>
+                    <div id="attendanceReportList"></div>
                   </article>
 
                   <article
@@ -658,7 +782,7 @@
                       <button
                         type="button"
                         id="downloadTermReport"
-                        class="btn btn-secondary"
+                        class="report-download-btn"
                         style="display: none"
                       >
                         Download CSV
@@ -807,8 +931,8 @@
                         <select id="subjectPerformanceGrade"></select>
                       </div>
                       <div class="analytics-filter-group">
-                        <label for="subjectPerformanceClass">Class</label>
-                        <select id="subjectPerformanceClass"></select>
+                        <label for="subjectPerformanceSubject">Subject</label>
+                        <select id="subjectPerformanceSubject"></select>
                       </div>
                       <div class="analytics-filter-group">
                         <label for="subjectPerformanceTerm">Term</label>

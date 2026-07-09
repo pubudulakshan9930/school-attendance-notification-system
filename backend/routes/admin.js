@@ -95,4 +95,10 @@ router.post("/alerts/emergency", adminController.sendEmergencyAlert);
 router.get("/attendance-settings", adminController.getAttendanceSettings);
 router.put("/attendance-settings", adminController.updateAttendanceSettings);
 
+// Backup & Restore
+router.get("/backups", adminController.getBackupModule);
+router.post("/backups/create", adminController.createBackup);
+router.get("/backups/:backupId/download", adminController.downloadBackup);
+router.post("/backups/:backupId/restore", adminController.restoreBackup);
+
 module.exports = router;

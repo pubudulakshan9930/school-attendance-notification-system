@@ -31,6 +31,11 @@ router.get(
   teacherController.getStudentSubjects,
 );
 router.get("/subjects", requireTeacherRole, teacherController.getSubjects);
+router.post(
+  "/ai-assistant/chat",
+  requireTeacherRole,
+  teacherController.chatWithAiAssistant,
+);
 router.get(
   "/student-marks",
   requireTeacherRole,

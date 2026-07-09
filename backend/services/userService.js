@@ -1,6 +1,6 @@
-const bcrypt = require("bcrypt");
 const pool = require("../db");
 const { normalizeClassStream } = require("./classCurriculumService");
+const { hashPassword } = require("./passwordService");
 
 const TEACHER_ROLE = "teacher";
 
@@ -127,7 +127,7 @@ async function createTeacher({
   password,
 }) {
   const client = await pool.connect();
-  const password_hash = await bcrypt.hash(password, 10);
+  const password_hash = await hashPassword(password);
   const normalizedStream = normalizeClassStream(class_stream);
 
   try {

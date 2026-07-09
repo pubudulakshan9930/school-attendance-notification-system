@@ -276,6 +276,7 @@ const {
   getClassSubjectPlan,
   getStreamLabel,
 } = require("../services/classCurriculumService");
+const teacherAiAssistantService = require("../services/teacherAiAssistantService");
 const pool = require("../db");
 
 const TERM_ALIASES = {
@@ -1689,6 +1690,46 @@ async function getAttendanceStatus(req, res) {
   }
 }
 
+async function chatWithAiAssistant(req, res) {
+  try {
+    const message = String(
+      req.body?.message || req.body?.question || "",
+    ).trim();
+
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        error: "A question is required.",
+      });
+    }
+
+    const result = await teacherAiAssistantService.chatWithTeacherAssistant({
+      teacherId: req.user.userId,
+      message,
+    });
+
+    return res.json({
+      success: true,
+      intent: result.intent,
+      reply: result.reply,
+    });
+  } catch (error) {
+    console.error("Teacher AI assistant error:", error);
+
+    if (error.statusCode === 400) {
+      return res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    return res.status(503).json({
+      success: false,
+      error: "AI Assistant is temporarily unavailable.",
+    });
+  }
+}
+
 module.exports = {
   getDashboard,
   getTeacherProfile,
@@ -1710,4 +1751,5 @@ module.exports = {
   updateStudentDetails,
   updateTeacherProfile,
   getAttendanceStatus,
+  chatWithAiAssistant,
 };

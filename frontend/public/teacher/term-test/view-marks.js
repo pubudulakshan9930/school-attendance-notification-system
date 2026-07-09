@@ -5,7 +5,7 @@ const subjectSelect = document.getElementById("subjectSelect");
 const subjectFilterGroup = document.getElementById("subjectFilterGroup");
 const instructionMessage = document.getElementById("instructionMessage");
 const marksContainer = document.getElementById("marksContainer");
-const marksTableBody = document.getElementById("marksTableBody");
+const marksCardGrid = document.getElementById("marksCardGrid");
 const noMarksMessage = document.getElementById("noMarksMessage");
 const loadingMessage = document.getElementById("loadingMessage");
 const subjectNameDisplay = document.getElementById("subjectNameDisplay");
@@ -62,7 +62,9 @@ function getClassLabel(classInfo) {
 }
 
 function resetMarksView() {
-  marksTableBody.innerHTML = "";
+  if (marksCardGrid) {
+    marksCardGrid.innerHTML = "";
+  }
   marksContainer.style.display = "none";
   noMarksMessage.style.display = "none";
   loadingMessage.style.display = "none";
@@ -212,7 +214,9 @@ function displayMarks(data) {
   classDisplay.textContent = getClassLabel(classInfo);
   termDisplay.textContent = getTermLabel(term);
 
-  marksTableBody.innerHTML = "";
+  if (marksCardGrid) {
+    marksCardGrid.innerHTML = "";
+  }
 
   let marksTotal = 0;
   let marksRecorded = 0;
@@ -234,13 +238,19 @@ function displayMarks(data) {
       }
     }
 
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${student.student_code || "N/A"}</td>
-      <td>${student.full_name || "N/A"}</td>
-      <td>${markValue === null ? '<span class="mark-empty">N/A</span>' : `<strong>${markValue}</strong>/100`}</td>
+    const card = document.createElement("article");
+    card.className = "student-mark-card";
+    card.innerHTML = `
+      <div class="student-mark-card-main">
+        <div class="student-mark-card-name">${student.full_name || "N/A"}</div>
+        <div class="student-mark-card-code">Code: ${student.student_code || "N/A"}</div>
+      </div>
+      <div class="student-mark-card-score">
+        <span class="student-mark-card-score-label">Marks</span>
+        <span class="student-mark-card-score-value ${markValue === null ? "is-empty" : ""}">${markValue === null ? "N/A" : `${markValue}%`}</span>
+      </div>
     `;
-    marksTableBody.appendChild(row);
+    marksCardGrid.appendChild(card);
   });
 
   const average = marksRecorded > 0 ? marksTotal / marksRecorded : 0;
@@ -261,16 +271,15 @@ function displayMarks(data) {
   // pending: not marked / total
   const pending = students.length - marksRecorded;
   if (pendingCountDisplay) {
-    const pendingFormatted = String(pending).padStart(2, "0");
-    pendingCountDisplay.textContent = `${pendingFormatted} / ${students.length}`;
+    pendingCountDisplay.textContent = `${pending} / ${students.length}`;
   }
 
   // highest
   if (highestMarkDisplay) {
     if (highestMark >= 0) {
-      highestMarkDisplay.textContent = `${highestMark} / 100`;
+      highestMarkDisplay.textContent = `${highestMark}%`;
     } else {
-      highestMarkDisplay.textContent = `0 / 100`;
+      highestMarkDisplay.textContent = `0%`;
     }
   }
 

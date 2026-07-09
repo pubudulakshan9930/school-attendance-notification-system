@@ -164,7 +164,7 @@ async function getSubjectPerformanceFilterOptions(academicYear, grade) {
 
   const whereClause = clauses.join(" AND ");
 
-  const [yearsResult, gradesResult, classesResult] = await Promise.all([
+  const [yearsResult, gradesResult, subjectsResult] = await Promise.all([
     pool.query(
       `
         SELECT DISTINCT c.academic_year
@@ -185,20 +185,24 @@ async function getSubjectPerformanceFilterOptions(academicYear, grade) {
     ),
     pool.query(
       `
-        SELECT
-          c.id,
-          c.academic_year,
-          c.grade,
-          c.section,
-          c.stream,
-          CASE
-            WHEN NULLIF(c.section, '') IS NOT NULL THEN CONCAT('Grade ', c.grade, ' - ', c.section)
-            WHEN NULLIF(c.stream, '') IS NOT NULL THEN CONCAT('Grade ', c.grade, ' - ', c.stream)
-            ELSE CONCAT('Grade ', c.grade)
-          END AS label
-        FROM classes c
+        SELECT DISTINCT
+          sub.id,
+          sub.name
+        FROM term_tests tt
+        JOIN classes c
+          ON c.id = tt.class_id
+        JOIN subjects sub
+          ON sub.id = tt.subject_id
+        JOIN student_class_assignments sca
+          ON sca.student_id = tt.student_id
+         AND sca.class_id = tt.class_id
+        JOIN students s
+          ON s.id = tt.student_id
         WHERE ${whereClause}
-        ORDER BY c.academic_year DESC, c.grade ASC, c.section ASC, c.stream ASC
+          AND sca.removed_at IS NULL
+          AND s.is_active = true
+          AND tt.mark IS NOT NULL
+        ORDER BY sub.name ASC
       `,
       values,
     ),
@@ -207,95 +211,86 @@ async function getSubjectPerformanceFilterOptions(academicYear, grade) {
   return {
     academic_years: yearsResult.rows.map((row) => Number(row.academic_year)),
     grades: gradesResult.rows.map((row) => Number(row.grade)),
-    classes: classesResult.rows.map((row) => ({
+    subjects: subjectsResult.rows.map((row) => ({
       id: row.id,
-      academic_year: Number(row.academic_year),
-      grade: Number(row.grade),
-      section: String(row.section || ""),
-      stream: String(row.stream || ""),
-      label: String(row.label || ""),
+      name: String(row.name || ""),
     })),
   };
 }
 
-async function getSubjectPerformanceSeries(academicYear, grade, classId, term) {
-  if (!classId || !term) {
+async function getSubjectPerformanceSeries(
+  academicYear,
+  grade,
+  subjectId,
+  term,
+) {
+  if (!subjectId || !term) {
     return [];
   }
 
-  const values = [classId, Number(term)];
-  const studentConditions = [
-    "sca.class_id = $1",
-    "sca.removed_at IS NULL",
-    "s.is_active = true",
-  ];
-  const markConditions = [
-    "tt.class_id = $1",
-    "tt.term = $2",
-    "tt.mark IS NOT NULL",
-  ];
-
+  const values = [Number(term), String(subjectId)];
+  const classConditions = ["c.is_active = true"];
   let parameterIndex = 3;
 
   if (academicYear) {
-    studentConditions.push(`selected_class.academic_year = $${parameterIndex}`);
-    markConditions.push(`tt.academic_year = $${parameterIndex}`);
+    classConditions.push(`c.academic_year = $${parameterIndex}`);
     values.push(Number(academicYear));
     parameterIndex += 1;
   }
 
   if (grade) {
-    studentConditions.push(`selected_class.grade = $${parameterIndex}`);
-    markConditions.push(`selected_class.grade = $${parameterIndex}`);
+    classConditions.push(`c.grade = $${parameterIndex}`);
     values.push(Number(grade));
     parameterIndex += 1;
   }
 
   const query = `
-    WITH selected_class AS (
+    WITH selected_classes AS (
       SELECT
         c.id,
         c.grade,
-        c.academic_year
+        c.academic_year,
+        CASE
+          WHEN NULLIF(c.section, '') IS NOT NULL THEN CONCAT('Grade ', c.grade, ' - ', c.section)
+          WHEN NULLIF(c.stream, '') IS NOT NULL THEN CONCAT('Grade ', c.grade, ' - ', c.stream)
+          ELSE CONCAT('Grade ', c.grade)
+        END AS class_label
       FROM classes c
-      WHERE c.id = $1
-        AND c.is_active = true
+      WHERE ${classConditions.join(" AND ")}
     ),
     selected_students AS (
       SELECT
+        sca.class_id,
         s.id AS student_id
       FROM student_class_assignments sca
       JOIN students s
         ON s.id = sca.student_id
-      JOIN selected_class
-        ON selected_class.id = sca.class_id
-      WHERE ${studentConditions.join(" AND ")}
+      JOIN selected_classes sc
+        ON sc.id = sca.class_id
+      WHERE sca.removed_at IS NULL
+        AND s.is_active = true
     ),
-    selected_marks AS (
+    class_subject_marks AS (
       SELECT
-        tt.subject_id,
+        sc.id AS class_id,
+        sc.class_label,
         tt.mark
-      FROM term_tests tt
-      JOIN selected_students sel
-        ON sel.student_id = tt.student_id
-      JOIN selected_class
-        ON selected_class.id = tt.class_id
-      WHERE ${markConditions.join(" AND ")}
-    ),
-    subject_mark_aggregates AS (
-      SELECT
-        selected_marks.subject_id,
-        ROUND(AVG(selected_marks.mark)::numeric, 2) AS average_marks
-      FROM selected_marks
-      GROUP BY selected_marks.subject_id
+      FROM selected_classes sc
+      LEFT JOIN selected_students sel
+        ON sel.class_id = sc.id
+      LEFT JOIN term_tests tt
+        ON tt.student_id = sel.student_id
+       AND tt.class_id = sc.id
+       AND tt.term = $1
+       AND tt.subject_id = $2
+       AND tt.mark IS NOT NULL
     )
     SELECT
-      sub.name AS subject_name,
-      subject_mark_aggregates.average_marks
-    FROM subject_mark_aggregates
-    JOIN subjects sub
-      ON sub.id = subject_mark_aggregates.subject_id
-    ORDER BY sub.name ASC
+      class_label,
+      ROUND(COALESCE(AVG(mark), 0)::numeric, 2) AS average_marks
+    FROM class_subject_marks
+    GROUP BY class_id, class_label
+    ORDER BY class_label ASC
   `;
 
   const { rows } = await pool.query(query, values);
