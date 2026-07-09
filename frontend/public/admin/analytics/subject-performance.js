@@ -21,7 +21,7 @@ const academicYearSelect = document.getElementById(
   "subjectPerformanceAcademicYear",
 );
 const gradeSelect = document.getElementById("subjectPerformanceGrade");
-const classSelect = document.getElementById("subjectPerformanceClass");
+const subjectSelect = document.getElementById("subjectPerformanceSubject");
 const termSelect = document.getElementById("subjectPerformanceTerm");
 
 let chartInstance = null;
@@ -30,7 +30,7 @@ let loadingPromise = null;
 let filterState = {
   academicYear: "",
   grade: "",
-  classId: "",
+  subjectId: "",
   term: "",
 };
 
@@ -64,7 +64,7 @@ function updateFilterStateFromControls() {
   filterState = {
     academicYear: getSelectedValue(academicYearSelect),
     grade: getSelectedValue(gradeSelect),
-    classId: getSelectedValue(classSelect),
+    subjectId: getSelectedValue(subjectSelect),
     term: getSelectedValue(termSelect),
   };
 }
@@ -140,9 +140,9 @@ function syncFilterControls(filters) {
     value,
     label: value,
   }));
-  const classes = (filters.classes || []).map((item) => ({
+  const subjects = (filters.subjects || []).map((item) => ({
     value: item.id,
-    label: item.label,
+    label: item.name,
   }));
   const terms = (filters.terms || []).map((item) => ({
     value: item.value,
@@ -157,7 +157,13 @@ function syncFilterControls(filters) {
     "All Years",
   );
   buildSelectOptions(gradeSelect, grades, "value", "label", "All Grades");
-  buildSelectOptions(classSelect, classes, "value", "label", "Select Class");
+  buildSelectOptions(
+    subjectSelect,
+    subjects,
+    "value",
+    "label",
+    "Select Subject",
+  );
   buildSelectOptions(termSelect, terms, "value", "label", "Select Term");
 
   if (filterState.academicYear) {
@@ -166,8 +172,8 @@ function syncFilterControls(filters) {
   if (filterState.grade) {
     gradeSelect.value = filterState.grade;
   }
-  if (filterState.classId) {
-    classSelect.value = filterState.classId;
+  if (filterState.subjectId) {
+    subjectSelect.value = filterState.subjectId;
   }
   if (!filterState.term && termSelect.options.length > 1) {
     termSelect.value = termSelect.options[1].value;
@@ -175,7 +181,7 @@ function syncFilterControls(filters) {
 
   filterState.academicYear = getSelectedValue(academicYearSelect);
   filterState.grade = getSelectedValue(gradeSelect);
-  filterState.classId = getSelectedValue(classSelect);
+  filterState.subjectId = getSelectedValue(subjectSelect);
   filterState.term = getSelectedValue(termSelect);
 }
 
@@ -192,8 +198,8 @@ async function fetchSubjectPerformanceSeries() {
   if (filterState.grade) {
     params.set("grade", filterState.grade);
   }
-  if (filterState.classId) {
-    params.set("class_id", filterState.classId);
+  if (filterState.subjectId) {
+    params.set("subject_id", filterState.subjectId);
   }
   if (filterState.term) {
     params.set("term", filterState.term);
@@ -212,7 +218,9 @@ function buildChart(series) {
     return;
   }
 
-  const labels = series.map((row) => String(row.subject || ""));
+  const labels = series.map((row) =>
+    String(row.label || row.class_label || ""),
+  );
   const values = series.map((row) => Number(row.average_marks || 0));
 
   if (chartInstance) {
@@ -244,7 +252,7 @@ function buildChart(series) {
         },
         title: {
           display: true,
-          text: "Average Subject Marks",
+          text: "Average Subject Marks by Class",
           color: "#10223d",
           font: {
             size: 14,
@@ -266,7 +274,7 @@ function buildChart(series) {
         x: {
           title: {
             display: true,
-            text: "Subject",
+            text: "Class",
             color: "#10223d",
           },
           ticks: {
@@ -317,9 +325,12 @@ async function loadSubjectPerformanceChart() {
       updateFilterStateFromControls();
 
       if (subjectPerformanceCaption) {
-        subjectPerformanceCaption.textContent = filterState.classId
-          ? `Showing results for ${filterState.classId ? "the selected class" : "the selected filters"}.`
-          : "Select a class to view the chart.";
+        if (filterState.grade && filterState.subjectId) {
+          subjectPerformanceCaption.textContent = `Showing class averages for Grade ${filterState.grade} / ${subjectSelect.options[subjectSelect.selectedIndex]?.text || "selected subject"}.`;
+        } else {
+          subjectPerformanceCaption.textContent =
+            "Select a grade and subject to view the chart.";
+        }
       }
 
       if (!series.length) {
@@ -361,18 +372,11 @@ async function loadSubjectPerformanceChart() {
 }
 
 function bindFilterEvents() {
-  [academicYearSelect, gradeSelect, classSelect, termSelect].forEach(
+  [academicYearSelect, gradeSelect, subjectSelect, termSelect].forEach(
     (selectElement) => {
       if (selectElement) {
         selectElement.addEventListener("change", () => {
           updateFilterStateFromControls();
-          if (
-            selectElement === academicYearSelect ||
-            selectElement === gradeSelect
-          ) {
-            void loadSubjectPerformanceChart();
-            return;
-          }
           void loadSubjectPerformanceChart();
         });
       }

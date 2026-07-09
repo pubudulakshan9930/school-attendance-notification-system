@@ -1,10 +1,10 @@
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const {
   validateTeacherInput,
   findTeacherByEmailOrTeacherCode,
   createTeacher,
 } = require("../services/userService");
+const { verifyPassword } = require("../services/passwordService");
 const { authenticateToken } = require("../middleware/auth");
 const authRepository = require("../repositories/authRepository");
 
@@ -108,11 +108,7 @@ async function login(req, res) {
       return res.status(401).json({ error: "Invalid credentials." });
     }
 
-    const passwordMatches =
-      user.password_hash &&
-      (user.password_hash.startsWith("$2")
-        ? await bcrypt.compare(password, user.password_hash)
-        : password === user.password_hash);
+    const passwordMatches = await verifyPassword(password, user.password_hash);
 
     if (!passwordMatches) {
       return res.status(401).json({ error: "Invalid credentials." });

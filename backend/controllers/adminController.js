@@ -10,6 +10,7 @@ const {
 } = require("../services/smsService");
 const adminRepository = require("../repositories/adminRepository");
 const adminService = require("../services/adminService");
+const backupService = require("../services/backupService");
 const classTermMarksApprovalService = require("../services/classTermMarksApprovalService");
 const pool = require("../db");
 const adminAnalyticsRepository = require("../repositories/adminAnalyticsRepository");
@@ -580,7 +581,7 @@ async function getSubjectPerformanceFilterOptions(req, res) {
       data: {
         academic_years: filters.academic_years || [],
         grades: filters.grades || [],
-        classes: filters.classes || [],
+        subjects: filters.subjects || [],
         terms: [
           { value: 1, label: "First Term" },
           { value: 2, label: "Second Term" },
@@ -606,8 +607,8 @@ async function getSubjectPerformanceAnalytics(req, res) {
     const grade = normalizeAnalyticsFilterValue(req.query.grade, (value) =>
       Number(value),
     );
-    const classId = String(
-      req.query.class_id || req.query.classId || "",
+    const subjectId = String(
+      req.query.subject_id || req.query.subjectId || "",
     ).trim();
     const term = normalizeAnalyticsFilterValue(req.query.term, (value) =>
       Number(value),
@@ -616,7 +617,7 @@ async function getSubjectPerformanceAnalytics(req, res) {
     const rows = await adminAnalyticsRepository.getSubjectPerformanceSeries(
       academicYear,
       grade,
-      classId,
+      subjectId,
       term,
     );
 
@@ -624,7 +625,7 @@ async function getSubjectPerformanceAnalytics(req, res) {
       success: true,
       data: {
         series: rows.map((row) => ({
-          subject: String(row.subject_name || ""),
+          label: String(row.class_label || ""),
           average_marks: Number(row.average_marks || 0),
         })),
       },
@@ -1716,6 +1717,91 @@ async function promoteStudents(req, res) {
   }
 }
 
+async function getBackupModule(req, res) {
+  try {
+    const data = await backupService.getBackupDashboardData();
+    return res.json({
+      success: true,
+      message:
+        data.history.length > 0
+          ? "Backup history loaded."
+          : "No Backup Available",
+      data,
+    });
+  } catch (error) {
+    console.error("Admin backup overview error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Backup Failed",
+      error: error.message,
+    });
+  }
+}
+
+async function createBackup(req, res) {
+  try {
+    const result = await backupService.createDatabaseBackup();
+    return res.json({
+      success: true,
+      message: "Backup Created Successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Admin backup creation error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Backup Failed",
+      error: error.message,
+    });
+  }
+}
+
+async function downloadBackup(req, res) {
+  try {
+    const { backup, file_path } = await backupService.getBackupForDownload(
+      req.params.backupId,
+    );
+    return res.download(file_path, backup.backup_name || backup.file_name);
+  } catch (error) {
+    console.error("Admin backup download error:", error);
+    return res.status(404).json({
+      success: false,
+      message: error.message || "Backup not found.",
+    });
+  }
+}
+
+async function restoreBackup(req, res) {
+  try {
+    const confirmed =
+      req.body?.confirm === true || req.body?.confirm === "true";
+
+    if (!confirmed) {
+      return res.status(400).json({
+        success: false,
+        message: "Restore confirmation required.",
+      });
+    }
+
+    const result = await backupService.restoreDatabaseFromBackup(
+      req.params.backupId,
+    );
+
+    return res.json({
+      success: true,
+      message: "Restore Successful",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Admin backup restore error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Restore Failed",
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   sendEmergencyAlert,
   createClass,
@@ -1754,4 +1840,8 @@ module.exports = {
   getAttendanceSettings,
   updateAttendanceSettings,
   promoteStudents,
+  getBackupModule,
+  createBackup,
+  downloadBackup,
+  restoreBackup,
 };

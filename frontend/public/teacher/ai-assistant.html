@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Assistant - Teacher Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Patrick+Hand&family=Poppins:ital,wght@0,100..900;1,100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../assets/css/global.css" />
+    <link rel="stylesheet" href="../assets/css/components.css" />
+    <link rel="stylesheet" href="ai-assistant.css" />
+  </head>
+  <body>
+    <div class="page assistant-page">
+      <header class="header assistant-header">
+        <div class="header-content assistant-header-content">
+          <div class="teacher-info assistant-title-wrap">
+            <p class="assistant-kicker">Teacher tools</p>
+            <h1 class="teacher-name" id="teacherName">AI Assistant</h1>
+            <p class="class-info" id="classInfo">
+              Select a question to analyze your class
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <main class="main assistant-main">
+        <section
+          class="assistant-shell"
+          aria-label="Teacher AI assistant workspace"
+        >
+          <section class="assistant-chat-card" aria-label="AI assistant chat">
+            <div class="assistant-card-header assistant-chat-header">
+              <div>
+                <p class="assistant-card-kicker">Conversation</p>
+                <h2>Class analysis chat</h2>
+              </div>
+              <span class="assistant-status-pill">Teacher only</span>
+            </div>
+
+            <div
+              id="assistantMessages"
+              class="assistant-messages"
+              aria-live="polite"
+            ></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="../assets/js/teacher-auth.js"></script>
+    <script src="teacher-ai-assistant.js"></script>
+  </body>
+</html>

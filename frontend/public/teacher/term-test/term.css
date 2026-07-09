@@ -434,16 +434,24 @@ body {
   margin-bottom: 18px;
 }
 
+.spreadsheet-upload-header > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .spreadsheet-upload-header h3 {
   margin: 0 0 8px;
   color: #10223d;
   font-size: 1.15rem;
+  line-height: 1.35;
 }
 
-.spreadsheet-upload-header p {
+.spreadsheet-upload-header p,
+.spreadsheet-upload-description {
   margin: 0;
   color: #51617b;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .upload-template-link {
@@ -898,6 +906,39 @@ body {
 
   .marks-actions .btn {
     width: 100%;
+  }
+
+  .spreadsheet-upload-card {
+    padding: 18px 14px;
+  }
+
+  .spreadsheet-upload-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .spreadsheet-upload-header h3 {
+    font-size: 1.05rem;
+  }
+
+  .spreadsheet-upload-header p,
+  .spreadsheet-upload-description {
+    font-size: 0.92rem;
+  }
+
+  .upload-template-link {
+    width: 100%;
+    text-align: center;
+  }
+
+  .spreadsheet-upload-actions {
+    flex-direction: column;
+  }
+
+  .spreadsheet-upload-actions .btn {
+    width: 100%;
+    flex-basis: auto;
   }
 }
 
