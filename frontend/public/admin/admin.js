@@ -1544,39 +1544,121 @@ async function loadSelectedClassDetails() {
     },
   );
 
-  renderDetailedList(
-    classStudentsDetails,
-    data.students || [],
-    "No active students found in this class.",
-    (student) => {
-      return [
-        {
-          label: "Student",
-          value: student.full_name,
-        },
-        {
-          label: "Parent",
-          value: student.parent_name,
-        },
-        {
-          label: "Parent Phone",
-          value: student.parent_phone || "N/A",
-        },
-        {
-          label: "Parent Email",
-          value: student.parent_email || "N/A",
-        },
-        {
-          label: "Assigned Date",
-          value: formatDateYmd(student.assigned_at),
-        },
-        {
-          label: "Registered Date",
-          value: formatDateYmd(student.created_at),
-        },
-      ];
-    },
-  );
+  // Render students and teacher details as tables for clearer presentation.
+  renderTeacherTable(classTeacherDetails, data.class);
+  renderStudentsTable(classStudentsDetails, data.students || []);
+}
+
+function renderTeacherTable(container, classInfo) {
+  if (!container) return;
+  container.innerHTML = "";
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "table-responsive";
+
+  const table = document.createElement("table");
+  table.className = "teachers-table";
+
+  const thead = document.createElement("thead");
+  thead.innerHTML = `
+    <tr>
+      <th>Class</th>
+      <th>Teacher</th>
+      <th>Email</th>
+      <th>Phone</th>
+    </tr>
+  `;
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  const tr = document.createElement("tr");
+
+  const classCell = document.createElement("td");
+  classCell.textContent = `${formatClassLabel(classInfo)} (${classInfo.academic_year})`;
+  tr.appendChild(classCell);
+
+  const teacherCell = document.createElement("td");
+  teacherCell.textContent = classInfo.teacher_name || "Not assigned";
+  tr.appendChild(teacherCell);
+
+  const emailCell = document.createElement("td");
+  emailCell.textContent = classInfo.teacher_email || "N/A";
+  tr.appendChild(emailCell);
+
+  const phoneCell = document.createElement("td");
+  phoneCell.textContent = classInfo.teacher_phone || "N/A";
+  tr.appendChild(phoneCell);
+
+  tbody.appendChild(tr);
+  table.appendChild(tbody);
+  wrapper.appendChild(table);
+  container.appendChild(wrapper);
+}
+
+function renderStudentsTable(container, students) {
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!students || students.length === 0) {
+    const p = document.createElement("p");
+    p.textContent = "No active students found in this class.";
+    container.appendChild(p);
+    return;
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "table-responsive";
+
+  const table = document.createElement("table");
+  table.className = "teachers-table";
+
+  const thead = document.createElement("thead");
+  thead.innerHTML = `
+    <tr>
+      <th>Student</th>
+      <th>Parent</th>
+      <th>Parent Phone</th>
+      <th>Parent Email</th>
+      <th>Assigned Date</th>
+      <th>Registered Date</th>
+    </tr>
+  `;
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  students.forEach((student) => {
+    const tr = document.createElement("tr");
+
+    const studentCell = document.createElement("td");
+    studentCell.textContent = student.full_name || "N/A";
+    tr.appendChild(studentCell);
+
+    const parentCell = document.createElement("td");
+    parentCell.textContent = student.parent_name || "N/A";
+    tr.appendChild(parentCell);
+
+    const parentPhoneCell = document.createElement("td");
+    parentPhoneCell.textContent = student.parent_phone || "N/A";
+    tr.appendChild(parentPhoneCell);
+
+    const parentEmailCell = document.createElement("td");
+    parentEmailCell.textContent = student.parent_email || "N/A";
+    tr.appendChild(parentEmailCell);
+
+    const assignedCell = document.createElement("td");
+    assignedCell.textContent = formatDateYmd(student.assigned_at);
+    tr.appendChild(assignedCell);
+
+    const registeredCell = document.createElement("td");
+    registeredCell.textContent = formatDateYmd(student.created_at);
+    tr.appendChild(registeredCell);
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  wrapper.appendChild(table);
+  container.appendChild(wrapper);
 }
 
 async function loadTeachers() {
