@@ -41,7 +41,7 @@ function sanitizePhone(phone) {
     cleaned = "94" + cleaned;
   }
 
-  return cleaned;
+  return `+${cleaned}`;
 }
 
 function formatAttendanceSms({
@@ -136,6 +136,51 @@ function formatRegistrationSms({
   return parts.join(" ");
 }
 
+function looksLikeSuccessfulSmsResponse(response) {
+  if (response == null) {
+    return false;
+  }
+
+  if (typeof response === "string") {
+    const normalized = response.toLowerCase();
+    return (
+      normalized.includes("success") ||
+      normalized.includes("queued") ||
+      normalized.includes("accepted") ||
+      normalized.includes("sent")
+    );
+  }
+
+  if (typeof response === "object") {
+    if (response.success === false) {
+      return false;
+    }
+
+    if (
+      response.status === "failed" ||
+      response.status === "error" ||
+      response.status === "failure"
+    ) {
+      return false;
+    }
+
+    if (response.message && typeof response.message === "string") {
+      const normalized = response.message.toLowerCase();
+      if (
+        normalized.includes("error") ||
+        normalized.includes("failed") ||
+        normalized.includes("rejected")
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  return true;
+}
+
 async function sendSms({ recipient, message }) {
   const { apiToken, senderId } = requireSmsConfig();
 
@@ -174,18 +219,39 @@ async function sendSms({ recipient, message }) {
   }
 
   try {
-    return await postSmsRequest(payload, {
+    const response = await postSmsRequest(payload, {
       "Content-Type": "application/json",
       Accept: "application/json",
     });
+
+    if (!looksLikeSuccessfulSmsResponse(response)) {
+      const providerMsg = response?.message || response?.error || response;
+      const error = new Error(
+        `SMS provider rejected the request: ${JSON.stringify(providerMsg)}`,
+      );
+      error.cause = response;
+      throw error;
+    }
+
+    return response;
   } catch (err) {
     try {
-      return await postSmsRequest(formPayload.toString(), {
+      const response = await postSmsRequest(formPayload.toString(), {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
       });
+
+      if (!looksLikeSuccessfulSmsResponse(response)) {
+        const providerMsg = response?.message || response?.error || response;
+        const error = new Error(
+          `SMS provider rejected the request: ${JSON.stringify(providerMsg)}`,
+        );
+        error.cause = response;
+        throw error;
+      }
+
+      return response;
     } catch (fallbackErr) {
-      // Try to surface more helpful error messages from the provider
       const providerMsg =
         fallbackErr?.response?.data ||
         fallbackErr?.response ||
