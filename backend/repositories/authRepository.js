@@ -1,4 +1,5 @@
 const pool = require("../db");
+const { normalizePhone } = require("../services/teacherPasswordResetService");
 
 async function listClassesByAcademicYear(academicYear) {
   const query = `
@@ -58,9 +59,37 @@ async function assignTeacherToClass(classId, teacherId) {
   await pool.query(query, [teacherId, classId]);
 }
 
+async function findTeacherByPhone(phone) {
+  const normalizedPhone = normalizePhone(phone);
+  const query = `
+    SELECT id, role, full_name, login_id, email, phone, password_hash, teacher_code
+    FROM users
+    WHERE role = 'teacher'
+  `;
+
+  const { rows } = await pool.query(query);
+  return (
+    rows.find((row) => normalizePhone(row.phone) === normalizedPhone) || null
+  );
+}
+
+async function updateUserPasswordById(userId, passwordHash) {
+  const query = `
+    UPDATE users
+    SET password_hash = $1, updated_at = NOW()
+    WHERE id = $2
+    RETURNING id
+  `;
+
+  const { rows } = await pool.query(query, [passwordHash, userId]);
+  return rows[0] || null;
+}
+
 module.exports = {
   listClassesByAcademicYear,
   findUserByLoginOrEmail,
   getClassById,
   assignTeacherToClass,
+  findTeacherByPhone,
+  updateUserPasswordById,
 };

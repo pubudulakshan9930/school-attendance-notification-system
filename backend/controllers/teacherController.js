@@ -1640,9 +1640,12 @@ async function getAttendanceStatus(req, res) {
       hour: "2-digit",
       minute: "2-digit",
     });
-    const [currentHours, currentMinutes] = formatter.format(new Date()).split(":");
+    const [currentHours, currentMinutes] = formatter
+      .format(new Date())
+      .split(":");
     const currentTime = `${currentHours}:${currentMinutes}`;
-    const currentTimeInMinutes = Number(currentHours) * 60 + Number(currentMinutes);
+    const currentTimeInMinutes =
+      Number(currentHours) * 60 + Number(currentMinutes);
 
     // Parse times
     const [openHour, openMin] = openTime.split(":").map(Number);
