@@ -1633,12 +1633,16 @@ async function getAttendanceStatus(req, res) {
     const closeTime = allSettings.attendance_close_time || "09:30";
     const timezone = allSettings.attendance_timezone || "Asia/Colombo";
 
-    // Get current time
-    const now = new Date();
-    const currentHours = String(now.getHours()).padStart(2, "0");
-    const currentMinutes = String(now.getMinutes()).padStart(2, "0");
+    // Get current time in configured timezone
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const [currentHours, currentMinutes] = formatter.format(new Date()).split(":");
     const currentTime = `${currentHours}:${currentMinutes}`;
-    const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentTimeInMinutes = Number(currentHours) * 60 + Number(currentMinutes);
 
     // Parse times
     const [openHour, openMin] = openTime.split(":").map(Number);

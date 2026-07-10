@@ -11,7 +11,7 @@ const {
   startScheduler,
 } = require("./services/attendanceFinalizationScheduler");
 
-dotenv.config({ path: path.resolve(__dirname, ".env") });
+dotenv.config({ path: path.resolve(__dirname, ".env"), override: true });
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -27,35 +27,27 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/teacher", teacherRoutes);
 
-app.get("/health", (_req, res) => {
-  res.status(200).json({ status: "ok" });
+app.listen(port, () => {
+  console.log(`Sureki backend listening at http://localhost:${port}`);
+  const emailConfigured = isEmailConfigured();
+  console.log(`[HEALTH] Email configured: ${emailConfigured}`);
+
+  if (!emailConfigured) {
+    console.log(
+      `[DEBUG] EMAIL_USER present: ${Boolean(process.env.EMAIL_USER)}`,
+    );
+    console.log(
+      `[DEBUG] EMAIL_PASSWORD present: ${Boolean(process.env.EMAIL_PASSWORD)}`,
+    );
+    console.log(
+      `[DEBUG] EMAIL_HOST: ${process.env.EMAIL_HOST || "smtp.gmail.com"}`,
+    );
+  } else {
+    console.log(
+      `[DEBUG] Email host: ${process.env.EMAIL_HOST || "smtp.gmail.com"}, port: ${process.env.EMAIL_PORT || 587}`,
+    );
+  }
+
+  // Start attendance finalization scheduler
+  startScheduler();
 });
-
-if (require.main === module) {
-  app.listen(port, () => {
-    console.log(`Sureki backend listening at http://localhost:${port}`);
-    const emailConfigured = isEmailConfigured();
-    console.log(`[HEALTH] Email configured: ${emailConfigured}`);
-
-    if (!emailConfigured) {
-      console.log(
-        `[DEBUG] EMAIL_USER present: ${Boolean(process.env.EMAIL_USER)}`,
-      );
-      console.log(
-        `[DEBUG] EMAIL_PASSWORD present: ${Boolean(process.env.EMAIL_PASSWORD)}`,
-      );
-      console.log(
-        `[DEBUG] EMAIL_HOST: ${process.env.EMAIL_HOST || "smtp.gmail.com"}`,
-      );
-    } else {
-      console.log(
-        `[DEBUG] Email host: ${process.env.EMAIL_HOST || "smtp.gmail.com"}, port: ${process.env.EMAIL_PORT || 587}`,
-      );
-    }
-
-    // Start attendance finalization scheduler
-    startScheduler();
-  });
-}
-
-module.exports = app;
